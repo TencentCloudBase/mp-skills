@@ -9,7 +9,7 @@ import { installSkill } from '../lib/installer.js'
 import { readLock } from '../lib/lock-file.js'
 import { log, warn, ok, title } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
-import { fuzzySelect } from '../lib/selector.js'
+import { fuzzySelect, SelectItem } from '../lib/selector.js'
 
 interface AddOptions {
   list?: boolean
@@ -161,7 +161,31 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // 未指定 → 交互选择
     if (process.stdin.isTTY && skills.length > 1) {
-      const selected = await fuzzySelect(skills.map((s) => s.name))
+      // 尝试从注册表获取描述
+      const registryUrl =
+        'https://raw.githubusercontent.com/TencentCloudBase/awesome-miniprogram-skills/feat/skill-market/cli/src/registry.json'
+      let descMap = new Map<string, string>()
+      try {
+        const res = await fetch(registryUrl, {
+          headers: { 'User-Agent': 'mp-skills-cli', Accept: 'application/vnd.github.v3.raw' },
+        })
+        if (res.ok) {
+          const reg = await res.json()
+          for (const repo of reg.repositories || []) {
+            for (const s of repo.skills || []) {
+              descMap.set(s.name, s.description)
+            }
+          }
+        }
+      } catch {}
+
+      const selectItems: SelectItem[] = skills.map((s) => ({
+        value: s.name,
+        label: s.name,
+        description: descMap.get(s.name) || '',
+      }))
+
+      const selected = await fuzzySelect(selectItems)
       if (!selected) return
 
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)

@@ -9,6 +9,7 @@ import { addLockEntry } from './lock-file.js'
 export interface InstallOptions {
   skillName?: string
   source?: string
+  miniprogramRoot?: string
 }
 
 /**
@@ -20,7 +21,8 @@ export function installSkill(
   opts: InstallOptions = {},
 ): { skillName: string; targetDir: string } {
   const skillName = opts.skillName || skillPath.split('/').pop() || 'unknown'
-  const targetDir = join(projectPath, 'skills', skillName)
+  const mpRoot = opts.miniprogramRoot || resolveMiniprogramRoot(projectPath)
+  const targetDir = join(projectPath, mpRoot, 'skills', skillName)
 
   console.log(`\n📦 安装 Skill: ${skillName}`)
 
@@ -32,7 +34,7 @@ export function installSkill(
     mkdirSync(targetDir, { recursive: true })
     cpSync(skillPath, targetDir, { recursive: true })
   }
-  console.log(`   ✓ skills/${skillName}/`)
+  console.log(`   ✓ ${mpRoot}/skills/${skillName}/`)
 
   // 2. 更新 app.json — 从 project.config.json 取 miniprogramRoot
   const projectConfigPath = join(projectPath, 'project.config.json')
@@ -69,14 +71,11 @@ function injectAppJson(appJsonPath: string, skillName: string, skillPath: string
   if (!app.agent) app.agent = {}
   if (!Array.isArray(app.agent.skills)) app.agent.skills = []
 
-  // subPackages — root 相对于 app.json 所在目录
+  // subPackages — skills 目录与 app.json 在同一 miniprogramRoot 下
   if (!Array.isArray(app.subPackages)) app.subPackages = []
-  const appDir = dirname(appJsonPath)
-  const root = relative(appDir, projectPath)
-
-  if (!app.subPackages.some((p: { root: string }) => p.root === root)) {
+  if (!app.subPackages.some((p: { root: string }) => p.root === 'skills')) {
     app.subPackages.push({
-      root,
+      root: 'skills',
       name: 'skills',
       pages: [],
       independent: true,
@@ -134,17 +133,24 @@ function injectProjectConfig(configPath: string): void {
 
 /**
  * 从 project.config.json 解析 app.json 路径
- * miniprogramRoot 默认值为 "miniprogram/"
  */
 function resolveAppJson(projectPath: string): string | null {
-  const configPath = join(projectPath, 'project.config.json')
-  if (!existsSync(configPath)) return null
+  const root = resolveMiniprogramRoot(projectPath)
+  if (!root) return null
+  return join(projectPath, root, 'app.json')
+}
 
+/**
+ * 从 project.config.json 解析 miniprogramRoot
+ * @returns miniprogram 目录名（不带尾部斜杠），默认 "miniprogram"
+ */
+function resolveMiniprogramRoot(projectPath: string): string {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return 'miniprogram'
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    const root = (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
-    return join(projectPath, root, 'app.json')
+    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
   } catch {
-    return null
+    return 'miniprogram'
   }
 }
