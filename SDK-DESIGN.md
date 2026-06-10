@@ -127,13 +127,12 @@ module.exports = defineComponent({
 | `onOverflow({ overflow })` | 内容溢高 |
 | `onExpire()` | 卡片过期 |
 
-**`defineApi` handler 的 `ctx`：**
+**`defineApi` handler 的 `ctx`：** 同样具有 `getSessionId`、`expireAllCards` 等视图侧能力，还额外提供：
 
-| 方法 | 用途 |
+| 属性 | 用途 |
 |---|---|
-| `ctx.getSessionId()` | 当前会话 ID |
-| `ctx.expireAllCards(...)` | 过期卡片 |
-| `ctx.apiName` / `ctx.args` | 当前接口名和入参 |
+| `ctx.apiName` | 当前接口名 |
+| `ctx.args` | 当前接口入参 |
 
 ---
 
@@ -294,6 +293,103 @@ module.exports = definePaidApi({
 })
 ```
 
+### Agent — 自主推理
+
+`defineAgent` 把多个 API 组合成一个黑盒 Agent，LLM 一次 invoke，内部自闭环多步推理。
+
+#### defineAgent — 定义 Agent
+
+```javascript
+// skills/<name>/apis/foodOrderAgent.js
+const { defineAgent } = require('mp-skills')
+
+module.exports = defineAgent({
+  name: 'foodOrderAgent',
+
+  // LLM 提供方，默认微信云开发，可选别的
+  llm: {
+    provider: 'cloudbase'
+  },
+
+  // 系统指令 — LLM 的推理蓝图
+  instruction: 
+  `你是外卖点餐助手。收到用户需求后：
+  1. 先 searchRestaurants 搜索餐厅
+  2. 如果用户没指定，推荐评分最高的
+  3. getRestaurantDetail 查看菜单
+  4. 帮用户确认选品后下单并支付
+  注意：缺少地址时必须先问用户`,
+
+  // 可用工具 — 本地函数实现，框架自动转 tool schema
+  tools: {
+    searchRestaurants: async ({ keyword }, ctx) => {
+      const res = await fetch(`https://api.xxx.com/restaurants?keyword=${keyword}`)
+      return { text: `找到 ${res.total} 家餐厅`, structured: res.data }
+    },
+    createOrder: require('./apis/createOrder'),
+  },
+
+  maxSteps: 15,   // 最大推理步数，防止无限循环
+})
+```
+
+**Agent 的 inputSchema 在 `mcp.json` 中声明，对外暴露为一个普通 tool：**
+
+```json
+{
+  "apis": [
+    { "name": "searchRestaurants", "inputSchema": { ... } },
+    { "name": "createOrder", "inputSchema": { ... } }
+  ],
+  "agents": [
+    {
+      "name": "foodOrderAgent",
+      "path": "./apis/foodOrderAgent.js",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "用户的外卖需求" }
+        },
+        "required": ["query"]
+      }
+    }
+  ]
+}
+```
+
+**执行流程：** 外部 invoke `foodOrderAgent({ query })` → LLM 推理循环（选工具 → 调 API → 观察结果 → 循环）→ 返回最终 `reply.ok`
+
+**Agent 与 API 的对比：**
+
+| | `defineApi` | `defineAgent` |
+|---|---|---|
+| 粒度 | 原子操作 | 多步推理 |
+| 调用方式 | LLM 逐次调度 | 一次 invoke，内部自闭环 |
+| 状态 | 无状态 | `sessionId` 贯穿全流程 |
+| 返回 | 单步结果 | 最终结论 |
+
+**sessionId 是 Agent 内部的状态总线：**
+
+```
+Agent 内部（同一 sessionId=abc）
+  step1: searchRestaurants({ keyword: "川菜" })
+    → ctx.getSessionId() → "abc"
+    → logger entry { sessionId: "abc", apiName: "search...", ... }
+
+  step2: getRestaurantDetail({ restaurantId: "r_001" })
+    → ctx.getSessionId() → "abc"
+
+  step3: createOrder({ ... })
+    → auth 中间件注入 ctx.openid
+    → logger entry { sessionId: "abc", ... }
+```
+
+`sessionId` 保证了三件事：
+
+- **可观测** — 整个 Agent 推理链路的日志通过 sessionId 串起来
+- **上下文保持** — 中间件注入的 `openid` 等信息在 Agent 生命周期内一致
+- **父子关联** — 外部调用者可传入自己的 sessionId，建立父子会话关系
+
 ---
 
 ## 目录结构
@@ -304,12 +400,13 @@ my-miniapp/
 ├── pages/ ...
 └── skills/
     └── <name>/                    # ← create 生成
-        ├── mcp.json               # API / 组件声明
+        ├── mcp.json               # API / 组件 / Agent 声明
         ├── index.js               # createSkill 装配入口
         ├── SKILL.md               # 业务说明书
         ├── apis/
-        │   ├── index.js           # API 注册表
-        │   └── *.js               # 原子接口实现
+        │   ├── index.js           # API / Agent 注册表
+        │   └── *.js               # defineApi / defineAgent 实现
+
         └── components/
             └── */                 # 原子组件（四件套）
 ```
