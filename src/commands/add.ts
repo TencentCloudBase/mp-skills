@@ -9,6 +9,7 @@ import { installSkill } from '../lib/installer.js'
 import { readLock } from '../lib/lock-file.js'
 import { log, warn, ok, title } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
+import { fuzzySelect } from '../lib/selector.js'
 
 interface AddOptions {
   list?: boolean
@@ -160,7 +161,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // 未指定 → 交互选择
     if (process.stdin.isTTY && skills.length > 1) {
-      const selected = await interactiveSelect(skills.map((s) => s.name))
+      const selected = await fuzzySelect(skills.map((s) => s.name))
       if (!selected) return
 
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
@@ -184,35 +185,4 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     console.error(`❌ ${(err as Error).message}`)
     process.exit(1)
   }
-}
-
-/**
- * 交互式选择 Skill
- */
-async function interactiveSelect(skills: string[]): Promise<string | null> {
-  const readline = await import('node:readline')
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  return new Promise((resolve) => {
-    console.log('')
-    for (let i = 0; i < skills.length; i++) {
-      console.log(`  ${i + 1}. ${skills[i]}`)
-    }
-    console.log('  0. 取消')
-    console.log('')
-
-    rl.question(`请选择 (0-${skills.length}): `, (answer) => {
-      rl.close()
-      const num = parseInt(answer.trim(), 10)
-      if (num > 0 && num <= skills.length) {
-        resolve(skills[num - 1])
-      } else {
-        console.log('  已取消')
-        resolve(null)
-      }
-    })
-  })
 }
