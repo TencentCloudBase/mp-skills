@@ -34,16 +34,16 @@ export function installSkill(
   }
   console.log(`   ✓ skills/${skillName}/`)
 
-  // 2. 更新 app.json
-  const appJsonPath = join(projectPath, 'miniprogram', 'app.json')
-  if (existsSync(appJsonPath)) {
+  // 2. 更新 app.json — 从 project.config.json 取 miniprogramRoot
+  const projectConfigPath = join(projectPath, 'project.config.json')
+  const appJsonPath = resolveAppJson(projectPath)
+  if (appJsonPath && existsSync(appJsonPath)) {
     injectAppJson(appJsonPath, skillName, skillPath, projectPath)
   } else {
-    console.log('   ⚠️  未找到 miniprogram/app.json')
+    console.log('   ⚠️  未找到 app.json（已检查 project.config.json 配置）')
   }
 
   // 3. 更新 project.config.json
-  const projectConfigPath = join(projectPath, 'project.config.json')
   if (existsSync(projectConfigPath)) {
     injectProjectConfig(projectConfigPath)
   }
@@ -130,4 +130,21 @@ function injectProjectConfig(configPath: string): void {
     config.packOptions.include.unshift({ type: 'folder', value: 'skills' })
   }
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n')
+}
+
+/**
+ * 从 project.config.json 解析 app.json 路径
+ * miniprogramRoot 默认值为 "miniprogram/"
+ */
+function resolveAppJson(projectPath: string): string | null {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return null
+
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    const root = (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
+    return join(projectPath, root, 'app.json')
+  } catch {
+    return null
+  }
 }

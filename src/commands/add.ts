@@ -1,7 +1,7 @@
 // ── add 命令 ──
 // 安装 Skill 到目标项目
 
-import { existsSync, readdirSync, Dirent } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseSource } from '../lib/source-parser.js'
 import { cloneRepo, cleanupClone, listRemoteSkills } from '../lib/git.js'
@@ -23,10 +23,26 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // ── 检测项目 ──
     const projectPath = resolve('.')
-    const appJsonPath = join(projectPath, 'miniprogram', 'app.json')
+    const projectConfigPath = join(projectPath, 'project.config.json')
+    if (!existsSync(projectConfigPath)) {
+      warn('当前目录不是小程序项目（未找到 project.config.json）')
+      log('请在项目根目录运行')
+      return
+    }
+
+    // 读取 miniprogramRoot，默认 miniprogram/
+    let miniprogramRoot = 'miniprogram'
+    try {
+      const config = JSON.parse(readFileSync(projectConfigPath, 'utf-8'))
+      if (config.miniprogramRoot) {
+        miniprogramRoot = config.miniprogramRoot.replace(/\/$/, '')
+      }
+    } catch {}
+
+    const appJsonPath = join(projectPath, miniprogramRoot, 'app.json')
     if (!existsSync(appJsonPath)) {
-      warn('当前目录不是小程序项目（未找到 miniprogram/app.json）')
-      log('请在含有 miniprogram/ 的项目根目录运行')
+      warn(`未找到 ${miniprogramRoot}/app.json`)
+      log('请确认项目结构正确')
       return
     }
 
