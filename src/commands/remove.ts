@@ -4,6 +4,7 @@
 import { existsSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { log, warn, ok } from '../lib/utils.js'
+import { removeLockEntry } from '../lib/lock-file.js'
 
 interface RemoveOptions {
   all?: boolean
@@ -11,14 +12,17 @@ interface RemoveOptions {
 
 export async function removeCommand(name: string, opts: RemoveOptions): Promise<void> {
   const projectPath = resolve('.')
-  const skillsDir = join(projectPath, 'skills')
+  const mpRoot = resolveMpRoot(projectPath)
+  const skillsDir = join(projectPath, mpRoot, 'skills')
+  const appJsonPath = join(projectPath, mpRoot, 'app.json')
 
   // 从 app.json 移除配置
-  const appJsonPath = join(projectPath, 'miniprogram', 'app.json')
   if (existsSync(appJsonPath)) {
     const app = JSON.parse(readFileSync(appJsonPath, 'utf-8'))
     if (app.agent?.skills) {
-      app.agent.skills = app.agent.skills.filter((s: { path: string }) => s.path !== `skills/${name}`)
+      app.agent.skills = app.agent.skills.filter(
+        (s: { path: string }) => s.path !== `skills/${name}`,
+      )
       writeFileSync(appJsonPath, JSON.stringify(app, null, 2) + '\n')
     }
   }
@@ -38,5 +42,17 @@ export async function removeCommand(name: string, opts: RemoveOptions): Promise<
   }
 
   rmSync(targetDir, { recursive: true })
+  removeLockEntry(projectPath, name)
   ok(`已移除 ${name}`)
+}
+
+function resolveMpRoot(projectPath: string): string {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return 'miniprogram'
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
+  } catch {
+    return 'miniprogram'
+  }
 }

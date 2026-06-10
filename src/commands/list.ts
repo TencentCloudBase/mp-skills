@@ -1,7 +1,7 @@
 // ── list 命令 ──
 // 列出已安装 Skill
 
-import { existsSync, readdirSync, Dirent } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { log, title } from '../lib/utils.js'
 
@@ -12,9 +12,10 @@ interface ListOptions {
 
 export async function listCommand(opts: ListOptions): Promise<void> {
   const projectPath = resolve('.')
+  const mpRoot = resolveMpRoot(projectPath)
 
   if (!opts.remote || opts.all) {
-    const skillsDir = join(projectPath, 'skills')
+    const skillsDir = join(projectPath, mpRoot, 'skills')
     title('📋 本地已安装:')
     if (existsSync(skillsDir)) {
       const entries = readdirSync(skillsDir, { withFileTypes: true }).filter(
@@ -35,5 +36,16 @@ export async function listCommand(opts: ListOptions): Promise<void> {
     title('\n📡 从远程仓库安装:')
     log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills --list')
     log('  mp-skills add wechat-miniprogram/ai-mode-skills --list')
+  }
+}
+
+function resolveMpRoot(projectPath: string): string {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return 'miniprogram'
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
+  } catch {
+    return 'miniprogram'
   }
 }
