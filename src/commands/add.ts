@@ -163,7 +163,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     if (process.stdin.isTTY && skills.length > 1) {
       // 尝试从注册表获取描述
       const registryUrl =
-        'https://raw.githubusercontent.com/TencentCloudBase/awesome-miniprogram-skills/feat/skill-market/cli/src/registry.json'
+        'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
       let descMap = new Map<string, string>()
       try {
         const res = await fetch(registryUrl, {
@@ -188,14 +188,19 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       const selected = await fuzzySelect(selectItems)
       if (!selected) return
 
+      // 处理多选结果
+      const selectedNames = selected.split(',')
+
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
-      skillLocalPath = join(tmpDir, 'skills', selected)
-      installSkill(skillLocalPath, projectPath, {
-        skillName: selected,
-        source: sourceInfo.repoName || sourceInfo.repoUrl,
-      })
+      for (const name of selectedNames) {
+        skillLocalPath = join(tmpDir, 'skills', name)
+        installSkill(skillLocalPath, projectPath, {
+          skillName: name,
+          source: sourceInfo.repoName || sourceInfo.repoUrl,
+        })
+      }
       cleanupClone(tmpDir)
-      log(`\n✅ 安装完成！`)
+      log(`\n✅ 已安装 ${selectedNames.length} 个 Skill`)
     } else {
       // 非交互模式 → 打印列表
       title(`发现 ${skills.length} 个 Skill:`)

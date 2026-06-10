@@ -21,9 +21,9 @@ export interface SelectItem {
 }
 
 /**
- * fzf 风格交互选择器
+ * fzf 风格交互选择器（支持多选）
  * @param items 选项列表（含 label + description）
- * @returns 选中的 value，取消返回 null
+ * @returns 选中 value 的逗号分隔字符串，取消返回 null
  */
 export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
   if (!process.stdin.isTTY || items.length === 0) {
@@ -37,6 +37,7 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
   let query = ''
   let cursor = 0
   let renderedLines = 0
+  const selectedSet = new Set<string>()
 
   process.stdout.write(HIDE_CURSOR)
 
@@ -73,15 +74,17 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
       for (let i = 0; i < visible.length; i++) {
         const item = visible[i]
         const isSelected = i === actualCursor
-        const arrow = isSelected ? ` >` : `  `
+        const check = selectedSet.has(item.value) ? `\x1b[32m●${RESET}` : ` ${DIM}○${RESET}`
+        const arrow = isSelected ? `>` : ` `
         const name = isSelected ? `${CYAN}${item.label}${RESET}` : `${TEXT}${item.label}${RESET}`
         const desc = item.description ? ` ${DIM}${item.description.slice(0, 60)}${RESET}` : ''
-        lines.push(`${arrow} ${name}${desc}`)
+        lines.push(` ${arrow}${check} ${name}${desc}`)
       }
     }
 
+    const selCount = selectedSet.size
     lines.push('')
-    lines.push(`  ${DIM}type to filter | up/down navigate | enter select | esc cancel${RESET}`)
+    lines.push(`  ${DIM}type to filter | space toggle | enter (${selCount} selected) | esc cancel${RESET}`)
 
     for (const line of lines) {
       process.stdout.write(line + '\n')
@@ -113,7 +116,26 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
       if (key.name === 'return') {
         cleanup()
         const filtered = getFiltered()
-        resolve(filtered[cursor]?.value || null)
+        const selected = [...selectedSet]
+        if (selected.length === 0 && filtered[cursor]) {
+          // 未选择时，回车选中当前项
+          selected.push(filtered[cursor].value)
+        }
+        resolve(selected.length > 0 ? selected.join(',') : null)
+        return
+      }
+
+      if (key.name === 'space') {
+        const filtered = getFiltered()
+        const current = filtered[cursor]
+        if (current) {
+          if (selectedSet.has(current.value)) {
+            selectedSet.delete(current.value)
+          } else {
+            selectedSet.add(current.value)
+          }
+          render()
+        }
         return
       }
 
