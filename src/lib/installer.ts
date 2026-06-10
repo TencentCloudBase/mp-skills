@@ -2,7 +2,7 @@
 // 拷贝 Skill，注入 app.json / project.config.json，写入锁文件
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, dirname } from 'node:path'
 import { hashDirectory } from './git.js'
 import { addLockEntry } from './lock-file.js'
 
@@ -37,7 +37,7 @@ export function installSkill(
   // 2. 更新 app.json
   const appJsonPath = join(projectPath, 'miniprogram', 'app.json')
   if (existsSync(appJsonPath)) {
-    injectAppJson(appJsonPath, skillName, skillPath)
+    injectAppJson(appJsonPath, skillName, skillPath, projectPath)
   } else {
     console.log('   ⚠️  未找到 miniprogram/app.json')
   }
@@ -62,18 +62,21 @@ export function installSkill(
 /**
  * 注入 app.json
  */
-function injectAppJson(appJsonPath: string, skillName: string, skillPath: string): void {
+function injectAppJson(appJsonPath: string, skillName: string, skillPath: string, projectPath: string): void {
   const app = JSON.parse(readFileSync(appJsonPath, 'utf-8'))
 
   if (!app.lazyCodeLoading) app.lazyCodeLoading = 'requiredComponents'
   if (!app.agent) app.agent = {}
   if (!Array.isArray(app.agent.skills)) app.agent.skills = []
 
-  // subPackages
+  // subPackages — root 相对于 app.json 所在目录
   if (!Array.isArray(app.subPackages)) app.subPackages = []
-  if (!app.subPackages.some((p: { root: string }) => p.root === 'skills')) {
+  const appDir = dirname(appJsonPath)
+  const root = relative(appDir, projectPath)
+
+  if (!app.subPackages.some((p: { root: string }) => p.root === root)) {
     app.subPackages.push({
-      root: 'skills',
+      root,
       name: 'skills',
       pages: [],
       independent: true,
