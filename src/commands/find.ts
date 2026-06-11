@@ -2,7 +2,6 @@
 // 从中心化注册表搜索远程 Skill
 
 import { log, title, warn } from '../lib/utils.js'
-import { trackCommand } from '../lib/telemetry.js'
 
 const REGISTRY_URL = 'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
 
@@ -32,8 +31,6 @@ async function fetchRegistry(): Promise<Registry> {
 
 export async function findCommand(keyword: string) {
   title(`🔍 搜索 Skill${keyword ? `: "${keyword}"` : ''}`)
-
-  trackCommand({ command: 'find', detail: keyword || '' }).catch(() => {})
 
   let registry: Registry
   try {

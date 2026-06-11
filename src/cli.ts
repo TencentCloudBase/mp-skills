@@ -1,12 +1,31 @@
 // CLI 路由入口 — 解析命令并分发给对应的处理器
 import { program } from 'commander'
 import { createRequire } from 'node:module'
-import { setVersion } from './lib/telemetry.js'
+import { setVersion, trackCommand } from './lib/telemetry.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
 
 setVersion(version)
+
+/** 自动为命令添加遥测 */
+function track(name: string, fn: (...args: any[]) => Promise<void>) {
+  return async (...args: any[]) => {
+    const start = Date.now()
+    try {
+      await fn(...args)
+      trackCommand({ command: name, success: true, duration: Date.now() - start }).catch(() => {})
+    } catch (err) {
+      trackCommand({
+        command: name,
+        success: false,
+        error: (err as Error).message,
+        duration: Date.now() - start,
+      }).catch(() => {})
+      throw err
+    }
+  }
+}
 
 program
   .name('mp-skills')
@@ -20,10 +39,12 @@ program
   .option('--skill <name>', 'Install a specific Skill from the source')
   .option('--all', 'Install all Skills from the source')
   .option('-y, --yes', 'Skip confirmation prompts')
-  .action(async (source, opts) => {
-    const { addCommand } = await import('./commands/add.js')
-    await addCommand(source, opts)
-  })
+  .action(
+    track('add', async (source, opts) => {
+      const { addCommand } = await import('./commands/add.js')
+      await addCommand(source, opts)
+    }),
+  )
 
 // ── list — 列出已安装或远程可用的 Skill ─────────────────
 program
@@ -31,65 +52,79 @@ program
   .description('List installed Skills')
   .option('-r, --remote', 'List remotely available Skills from registry')
   .option('--all', 'List both installed and remote')
-  .action(async (opts) => {
-    const { listCommand } = await import('./commands/list.js')
-    await listCommand(opts)
-  })
+  .action(
+    track('list', async (opts) => {
+      const { listCommand } = await import('./commands/list.js')
+      await listCommand(opts)
+    }),
+  )
 
 // ── find — 搜索远程 Skill ────────────────────────────────
 program
   .command('find [keyword]')
   .description('Search for Skills in remote repositories')
-  .action(async (keyword) => {
-    const { findCommand } = await import('./commands/find.js')
-    await findCommand(keyword || '')
-  })
+  .action(
+    track('find', async (keyword) => {
+      const { findCommand } = await import('./commands/find.js')
+      await findCommand(keyword || '')
+    }),
+  )
 
 // ── remove — 移除已安装的 Skill ──────────────────────────
 program
   .command('remove <name>')
   .description('Remove an installed Skill')
   .option('--all', 'Remove all installed Skills')
-  .action(async (name, opts) => {
-    const { removeCommand } = await import('./commands/remove.js')
-    await removeCommand(name, opts)
-  })
+  .action(
+    track('remove', async (name, opts) => {
+      const { removeCommand } = await import('./commands/remove.js')
+      await removeCommand(name, opts)
+    }),
+  )
 
 // ── create — 在已有项目中创建一个新的 Skill ───────────────
 program
   .command('create [name]')
   .description('Create a new Skill skeleton in the current project')
-  .action(async (name) => {
-    const { createCommand } = await import('./commands/create.js')
-    await createCommand(name)
-  })
+  .action(
+    track('create', async (name) => {
+      const { createCommand } = await import('./commands/create.js')
+      await createCommand(name)
+    }),
+  )
 
 // ── new — 创建一个新的小程序项目 ──────────────────────────
 program
   .command('new <name>')
   .description('Create a new mini-program project with AI Skill support')
-  .action(async (name) => {
-    const { newCommand } = await import('./commands/new.js')
-    await newCommand(name)
-  })
+  .action(
+    track('new', async (name) => {
+      const { newCommand } = await import('./commands/new.js')
+      await newCommand(name)
+    }),
+  )
 
 // ── update — 更新已安装的 Skill ──────────────────────────
 program
   .command('update [skills...]')
   .description('Check and update installed Skills')
-  .action(async (skills) => {
-    const { updateCommand } = await import('./commands/update.js')
-    await updateCommand(skills)
-  })
+  .action(
+    track('update', async (skills) => {
+      const { updateCommand } = await import('./commands/update.js')
+      await updateCommand(skills)
+    }),
+  )
 
 // ── validate / execute / render ── 质检 ──────────────────
 program
   .command('validate [project-dir]')
   .description('Run static validation on Skills in the project')
-  .action(async (dir) => {
-    const { validateCommand } = await import('./commands/validate.js')
-    await validateCommand(dir || '.')
-  })
+  .action(
+    track('validate', async (dir) => {
+      const { validateCommand } = await import('./commands/validate.js')
+      await validateCommand(dir || '.')
+    }),
+  )
 
 program
   .command('execute')
@@ -97,20 +132,24 @@ program
   .requiredOption('--name <api-name>', 'API name to execute')
   .option('--args <json>', 'Arguments as JSON string')
   .option('--project <path>', 'Project path', '.')
-  .action(async (opts) => {
-    const { executeCommand } = await import('./commands/execute.js')
-    await executeCommand(opts)
-  })
+  .action(
+    track('execute', async (opts) => {
+      const { executeCommand } = await import('./commands/execute.js')
+      await executeCommand(opts)
+    }),
+  )
 
 program
   .command('render')
   .description('Render a Skill component')
   .requiredOption('--name <api-name>', 'API name to render')
   .option('--project <path>', 'Project path', '.')
-  .action(async (opts) => {
-    const { renderCommand } = await import('./commands/render.js')
-    await renderCommand(opts)
-  })
+  .action(
+    track('render', async (opts) => {
+      const { renderCommand } = await import('./commands/render.js')
+      await renderCommand(opts)
+    }),
+  )
 
 // Parse args
 program.parse()
