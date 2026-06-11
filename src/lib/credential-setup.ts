@@ -303,7 +303,7 @@ async function setupCloudbase(opts?: { defaultModel?: string }): Promise<LlmCred
   while (!model.enabled) {
     warn(`模型 ${model.group}/${model.model} 尚未在该环境开启`)
     log('  请先到 CloudBase 控制台开通该模型：')
-    log(`  https://tcb.cloud.tencent.com/dev?envId=${env.envId}#/ai/model`)
+    log(`  https://tcb.cloud.tencent.com/dev?envId=${env.envId}#/ai?tab=text-aiModel`)
     log('  开通后回到这里重新选择（或直接选择已开启的模型）。')
     model = await promptModelSelect('请重新选择模型：', models, { blankLineAfter: true })
   }
