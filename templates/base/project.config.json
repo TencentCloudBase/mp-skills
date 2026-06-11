@@ -1,5 +1,6 @@
 {
   "description": "AI 小程序 — 由 mp-skills 创建",
+  "miniprogramRoot": "miniprogram/",
   "packOptions": {
     "include": [{ "type": "folder", "value": "skills" }]
   },
