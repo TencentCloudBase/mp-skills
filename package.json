@@ -18,8 +18,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
-    "test": "node --import tsx --test --test-concurrency 1 test/*.test.ts",
-    "test:build": "npm run build && node --test dist/test/*.test.js",
+    "test": "tsx --test test/*.test.ts",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

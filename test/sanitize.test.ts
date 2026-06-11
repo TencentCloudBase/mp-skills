@@ -52,9 +52,23 @@ describe('sanitizeGitUrl', () => {
     assert.equal(sanitizeGitUrl(''), '')
   })
 
-  it('纯特殊字符全被移除', () => {
+  it('纯特殊字符仅保留安全符号', () => {
     const result = sanitizeGitUrl('!@#$%^&*()+=')
-    assert.equal(result, '') // 没有安全字符
+    // @ # % + 是 URL 安全字符，保留
+    assert.ok(result.length > 0)
+    assert.ok(!result.includes('!'))
+    assert.ok(!result.includes('$'))
+    assert.ok(!result.includes('^'))
+  })
+
+  it('移除尖括号', () => {
+    assert.equal(sanitizeGitUrl('https://github.com<SCRIPT>'), 'https://github.comSCRIPT')
+  })
+
+  it('移除花括号', () => {
+    const result = sanitizeGitUrl('https://github.com/{malicious}')
+    assert.ok(!result.includes('{'))
+    assert.ok(!result.includes('}'))
   })
 })
 
