@@ -23,9 +23,9 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skil
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 ```
 
-命令需要在**小程序项目根目录**下执行（含 `miniprogram/app.json`）。安装后自动：
+命令需要在**小程序项目根目录**下执行（含 `project.config.json`）。安装后自动：
 
-- 拷贝 Skill 到 `skills/<name>/`
+- 拷贝 Skill 到 `miniprogram/skills/<name>/`
 - 更新 `miniprogram/app.json` 的 `agent.skills` + `subPackages`
 - 更新 `project.config.json` 的 `packOptions.include`
 - 写入 `skills-lock.json` 版本锁
@@ -39,8 +39,8 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 | `list` | 列出已安装的 Skill |
 | `remove` | 移除已安装的 Skill |
 | `update` | 检查并更新已安装的 Skill |
-| `init` | 在当前目录创建空的 Skill 模板 |
-| `create` | 创建新的小程序项目骨架 |
+| `create` | 在已有项目中创建新的 Skill 骨架 |
+| `new` | 创建新的小程序项目骨架 |
 | `validate` | 静态校验 (需 wxa-skills-validate) |
 | `execute` | 执行原子接口 |
 | `render` | 渲染原子组件 |
@@ -106,32 +106,24 @@ npx mp-skills update
 npx mp-skills update drink-skill payment-skill
 ```
 
-### init
+### create
 
-在当前目录创建一个符合 wx.modelContext 规范的空 Skill 模板。
+在已有小程序项目中创建一个新的 Skill 骨架。
 
 ```bash
-npx mp-skills init my-skill
+cd my-project
+npx mp-skills create weather-skill     # 指定名称创建
+npx mp-skills create                   # 交互式输入名称
 ```
 
-生成结构：
+Skill 被创建在 `miniprogram/skills/<name>/`（根据 `project.config.json` 的 `miniprogramRoot` 自动适配）。生成后可用 `mp-skills add ./<name>` 安装到其他项目。
 
-```
-my-skill/
-├── mcp.json
-├── SKILL.md
-├── index.js
-├── apis/
-├── utils/
-└── components/greeting-card/
-```
-
-### create
+### new
 
 创建一个新的小程序项目，含 AI Skill 支持的基础配置。
 
 ```bash
-npx mp-skills create my-app
+npx mp-skills new my-app
 cd my-app
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
 ```
