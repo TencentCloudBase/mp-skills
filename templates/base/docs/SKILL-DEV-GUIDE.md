@@ -3,6 +3,7 @@
 本文档描述本项目的 Skill 开发规范。遵循这些规范可以保证 Skill 的一致性、可维护性和可部署性。
 
 > **重要**：创建任何新 Skill 前，必须先完整阅读 `wxa-skills-generate` Skill，它是最权威的生成指南，包含：
+>
 > - 原子组件设计规范（`references/ATOMIC_COMPONENT_DESIGN.md`）
 > - 代码模板（`references/CODE_TEMPLATES.md`）
 > - 组件模板（`references/COMPONENT_TEMPLATES.md`）
@@ -102,14 +103,14 @@ skills/<skill-name>/
 
 ## 命名规范
 
-| 项目 | 规范 | 示例 |
-|------|------|------|
-| Skill 目录 | kebab-case | `drink-skill`, `order-skill` |
-| API 名 | camelCase | `searchStores`, `placeOrder` |
-| 组件目录 | kebab-case | `store-list-card`, `order-confirm-card` |
-| 云函数名 | `{skill-name}-handler` | `queue-skill-handler` |
-| 数据库集合 | 语义化复数 | `queue_tickets`, `todo_items` |
-| Storage key | 带 skill 前缀 | `mp_skills_todos`, `skills_queue_ticket_xxx` |
+| 项目        | 规范                   | 示例                                         |
+| ----------- | ---------------------- | -------------------------------------------- |
+| Skill 目录  | kebab-case             | `drink-skill`, `order-skill`                 |
+| API 名      | camelCase              | `searchStores`, `placeOrder`                 |
+| 组件目录    | kebab-case             | `store-list-card`, `order-confirm-card`      |
+| 云函数名    | `{skill-name}-handler` | `queue-skill-handler`                        |
+| 数据库集合  | 语义化复数             | `queue_tickets`, `todo_items`                |
+| Storage key | 带 skill 前缀          | `mp_skills_todos`, `skills_queue_ticket_xxx` |
 
 ## SKILL.md
 
@@ -119,25 +120,30 @@ SKILL.md 包含 AI 路由元数据和接口链路说明。文件头必须包含 
 ---
 name: my-skill
 description: 简短描述
-version: "1.0.0"
-tags: ["微信小程序", "AI开发模式"]
-platform: ["wechat-miniprogram"]
+version: '1.0.0'
+tags: ['微信小程序', 'AI开发模式']
+platform: ['wechat-miniprogram']
 ---
 
 # my-skill 功能名称
 
 ## 触发场景
+
 用户原话举例：
+
 - "帮我..."
 
 ## 不适用范围
+
 - ...
 
 ## 接口链路
+
 - `api1`：说明
 - `api2`：说明
 
 ## 使用顺序
+
 - 先...
 - 再...
 ```
@@ -171,6 +177,7 @@ platform: ["wechat-miniprogram"]
 ```
 
 API 的 description 中需要包含：
+
 - 调用前置条件
 - 严禁场景（用【】标注）
 
@@ -190,7 +197,7 @@ async function myApi(params = {}) {
   // 正式模式：调用云函数
   const { result } = await wx.cloud.callFunction({
     name: 'my-skill-handler',
-    data: { action: 'myApi', ...params }
+    data: { action: 'myApi', ...params },
   })
 
   if (result && result.code === 0 && result.data) {
@@ -278,12 +285,12 @@ Component({
 
 ### 组件事件通信
 
-| 方向 | 方式 | 说明 |
-|------|------|------|
-| 接收数据 | `NotificationType.Result` | 监听 API 返回结果 |
+| 方向     | 方式                                        | 说明               |
+| -------- | ------------------------------------------- | ------------------ |
+| 接收数据 | `NotificationType.Result`                   | 监听 API 返回结果  |
 | 触发 API | `sendFollowUpMessage({ type: 'api/call' })` | 上行触发下一个 API |
-| 发送文本 | `sendFollowUpMessage({ type: 'text' })` | 给 AI 提供上下文 |
-| 打开页面 | `viewCtx.openDetailPage()` | 打开半屏详情页 |
+| 发送文本 | `sendFollowUpMessage({ type: 'text' })`     | 给 AI 提供上下文   |
+| 打开页面 | `viewCtx.openDetailPage()`                  | 打开半屏详情页     |
 
 ## 云函数
 
@@ -325,9 +332,7 @@ exports.main = async (event) => {
     {
       "name": "my_collection",
       "description": "说明",
-      "indexes": [
-        { "name": "idx_field", "field": "field" }
-      ]
+      "indexes": [{ "name": "idx_field", "field": "field" }]
     }
   ]
 }
@@ -346,13 +351,13 @@ registerAPIs()
 
 ## 双模式总结
 
-| | 预览模式 | 正式模式 |
-|---|---------|---------|
-| `mp_skills_preview_mode` | `true`（默认） | `false` |
-| 云函数 | 不调用 | 调用独立云函数 |
-| 数据库 | 不连接 | 连接云数据库 |
-| 数据来源 | `data/seed.js` + 本地 storage | 云函数返回 |
-| 适用场景 | 开发调试、Demo 展示 | 生产发布 |
+|                          | 预览模式                      | 正式模式       |
+| ------------------------ | ----------------------------- | -------------- |
+| `mp_skills_preview_mode` | `true`（默认）                | `false`        |
+| 云函数                   | 不调用                        | 调用独立云函数 |
+| 数据库                   | 不连接                        | 连接云数据库   |
+| 数据来源                 | `data/seed.js` + 本地 storage | 云函数返回     |
+| 适用场景                 | 开发调试、Demo 展示           | 生产发布       |
 
 ## 安全规范（云开发）
 
@@ -364,13 +369,13 @@ registerAPIs()
 // 错误：客户端传 openid（AI 可能伪造）
 const { result } = await wx.cloud.callFunction({
   name: 'my-handler',
-  data: { action: 'doSomething', openid: getOpenid() }    // ❌
+  data: { action: 'doSomething', openid: getOpenid() }, // ❌
 })
 
 // 正确：云函数自取，客户端不传
 const { result } = await wx.cloud.callFunction({
   name: 'my-handler',
-  data: { action: 'doSomething' }                          // ✅
+  data: { action: 'doSomething' }, // ✅
 })
 ```
 
@@ -379,7 +384,7 @@ const { result } = await wx.cloud.callFunction({
 ```javascript
 exports.main = async (event) => {
   const wxContext = cloud.getWXContext()
-  const uid = wxContext.OPENID  // ✅ 自动获取当前用户身份
+  const uid = wxContext.OPENID // ✅ 自动获取当前用户身份
   // 不使用 event.openid（AI 生成的参数不可信任）
 }
 ```

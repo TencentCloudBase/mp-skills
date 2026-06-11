@@ -1,0 +1,37 @@
+{
+  "apis": [
+    {
+      "name": "getWelcome",
+      "description": "获取首页欢迎信息和可用 Skill 列表。用户在打开小程序首页时调用，展示欢迎文案和推荐操作。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "用户标识，取自 wx.getStorageSync('openid')。首次访问时为空。"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "welcomeMsg": { "type": "string", "description": "欢迎语" },
+          "quickActions": { "type": "array", "description": "快捷操作列表" },
+          "recommendedSkills": { "type": "array", "description": "推荐 Skill" },
+          "usageTip": { "type": "string", "description": "使用提示" }
+        }
+      },
+      "_meta": {
+        "ui": {
+          "componentPath": "skills/greet-skill/components/welcome-card/index"
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "path": "skills/greet-skill/components/welcome-card/index",
+      "relatedPage": "/pages/index/index"
+    }
+  ]
+}

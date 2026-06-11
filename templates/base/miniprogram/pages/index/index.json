@@ -1,1 +1,5 @@
-{}
+{
+  "usingComponents": {
+    "welcome-card": "../../skills/greet-skill/components/welcome-card/index"
+  }
+}

@@ -2,7 +2,7 @@
  * 色源：app.json navigationBarBackgroundColor #5C3A21
  */
 .gc-card {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 1.07vw;
   padding: 3.2vw;
   box-sizing: border-box;
@@ -20,7 +20,7 @@
   line-height: 10.67vw;
   text-align: center;
   font-size: 4vw;
-  color: #5C3A21;
+  color: #5c3a21;
   font-weight: 500;
   border-radius: 1.07vw;
   border: 1px solid rgba(92, 58, 33, 0.2);
@@ -31,8 +31,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .gc-card { background: #2A1E16; }
-  .gc-message { color: rgba(255, 255, 255, 0.9); }
-  .gc-action { color: #E8A87C; border-color: rgba(232, 168, 124, 0.3); }
-  .gc-action-hover { background: rgba(232, 168, 124, 0.08); }
+  .gc-card {
+    background: #2a1e16;
+  }
+  .gc-message {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  .gc-action {
+    color: #e8a87c;
+    border-color: rgba(232, 168, 124, 0.3);
+  }
+  .gc-action-hover {
+    background: rgba(232, 168, 124, 0.08);
+  }
 }

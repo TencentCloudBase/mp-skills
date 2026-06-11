@@ -1,5 +1,12 @@
 <view class="page">
-  <view class="title">AI 小程序</view>
-  <view class="desc">运行 mp-skills add awesome-miniprogram --skill <name> 来添加 AI Skill</view>
-  <view class="status">{{greeting}}</view>
+  <welcome-card
+    data="{{welcomeData}}"
+    bind:action="onAction"
+    wx:if="{{!loading}}"
+  />
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view class="footer">
+    <text class="footer-text">运行 mp-skills add 安装更多 Skill</text>
+  </view>
 </view>

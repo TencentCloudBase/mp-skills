@@ -1,7 +1,7 @@
 {
   "pages": ["pages/index/index"],
   "window": {
-    "navigationBarBackgroundColor": "#5C3A21",
+    "navigationBarBackgroundColor": "#1677ff",
     "navigationBarTitleText": "AI 小程序",
     "navigationBarTextStyle": "white"
   },
@@ -16,7 +16,13 @@
     }
   ],
   "agent": {
-    "skills": [],
+    "skills": [
+      {
+        "name": "greet",
+        "description": "获取首页欢迎信息和可用 Skill 列表。用户打开小程序时自动展示欢迎卡片。",
+        "path": "skills/greet-skill"
+      }
+    ],
     "pageMetadata": "page-meta.json"
   }
 }

@@ -1,0 +1,35 @@
+<view class="welcome-card">
+  <view class="header">
+    <text class="avatar">🤖</text>
+    <view class="header-text">
+      <text class="greeting">{{welcomeMsg}}</text>
+      <text wx:if="{{usageTip}}" class="tip">{{usageTip}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{quickActions.length > 0}}" class="actions">
+    <view class="actions-title">快捷操作</view>
+    <view class="actions-list">
+      <view
+        class="action-item"
+        wx:for="{{quickActions}}"
+        wx:key="id"
+        data-action="{{item.action}}"
+        bindtap="onAction"
+      >
+        <text class="action-icon">{{item.icon}}</text>
+        <text class="action-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{recommendedSkills.length > 0}}" class="recommend">
+    <view class="recommend-title">推荐 Skill</view>
+    <view class="skill-tags">
+      <view class="skill-tag" wx:for="{{recommendedSkills}}" wx:key="name">
+        <text class="skill-name">{{item.name}}</text>
+        <text class="skill-desc">{{item.description}}</text>
+      </view>
+    </view>
+  </view>
+</view>

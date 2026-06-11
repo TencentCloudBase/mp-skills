@@ -21,14 +21,14 @@ Component({
         console.info(`[ai-mode] greeting-card overflow overflowed=${overflowed}`)
       })
       console.info('[ai-mode] greeting-card overflow monitor=on')
-    }
+    },
   },
   methods: {
     onTap() {
       console.info('[ai-mode] greeting-card send api/call name=greet')
       wx.modelContext.getContext(this).sendFollowUpMessage({
-        content: [{ type: 'text', text: '了解更多' }]
+        content: [{ type: 'text', text: '了解更多' }],
       })
-    }
-  }
+    },
+  },
 })
