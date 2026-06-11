@@ -20,8 +20,11 @@ jobs:
       - run: npm run format:check
       - name: Run tests
         run: |
-          echo "=== installer ===" && npx tsx --test test/installer.test.ts
-          echo "=== lock-file ===" && npx tsx --test test/lock-file.test.ts
-          echo "=== sanitize ===" && npx tsx --test test/sanitize.test.ts
-          echo "=== source-parser ===" && npx tsx --test test/source-parser.test.ts
+          set +e
+          FAIL=0
+          echo "=== installer ===" && npx tsx --test test/installer.test.ts || { echo "❌ installer FAILED"; FAIL=1; }
+          echo "=== lock-file ===" && npx tsx --test test/lock-file.test.ts || { echo "❌ lock-file FAILED"; FAIL=1; }
+          echo "=== sanitize ===" && npx tsx --test test/sanitize.test.ts || { echo "❌ sanitize FAILED"; FAIL=1; }
+          echo "=== source-parser ===" && npx tsx --test test/source-parser.test.ts || { echo "❌ source-parser FAILED"; FAIL=1; }
+          exit $FAIL
       - run: npm run build
