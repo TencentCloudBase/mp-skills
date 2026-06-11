@@ -32,18 +32,20 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 
 ## 命令
 
-| 命令 | 描述 |
-|------|------|
-| `add` | 从 GitHub 仓库或本地路径安装 Skill |
-| `find` | 搜索远程仓库中的可用 Skill |
-| `list` | 列出已安装的 Skill |
-| `remove` | 移除已安装的 Skill |
-| `update` | 检查并更新已安装的 Skill |
-| `create` | 在已有项目中创建新的 Skill 骨架 |
-| `new` | 创建新的小程序项目骨架 |
-| `validate` | 静态校验 (需 wxa-skills-validate) |
-| `execute` | 执行原子接口 |
-| `render` | 渲染原子组件 |
+| 命令       | 描述                                                       |
+| ---------- | ---------------------------------------------------------- |
+| `add`      | 从 GitHub 仓库或本地路径安装 Skill                         |
+| `find`     | 搜索远程仓库中的可用 Skill                                 |
+| `list`     | 列出已安装的 Skill                                         |
+| `remove`   | 移除已安装的 Skill                                         |
+| `update`   | 检查并更新已安装的 Skill                                   |
+| `create`   | 在已有项目中创建新的 Skill 骨架                            |
+| `new`      | 创建新的小程序项目骨架                                     |
+| `validate` | 静态校验 (需 wxa-skills-validate)                          |
+| `execute`  | 执行原子接口                                               |
+| `render`   | 渲染原子组件                                               |
+| `gen`      | 分析已有小程序项目，调用 opencode 生成 Skill 分包          |
+| `eval`     | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） |
 
 ### add
 
@@ -123,10 +125,172 @@ Skill 被创建在 `miniprogram/skills/<name>/`（根据 `project.config.json` �
 创建一个新的小程序项目，含 AI Skill 支持的基础配置。
 
 ```bash
-npx mp-skills new my-app
+npx mp-skills create my-app
 cd my-app
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
 ```
+
+### gen
+
+分析一个**已有的**小程序项目，调用 [opencode](https://github.com/sst/opencode) 自动生成符合 `wx.modelContext` 规范的 Skill 分包。生成过程**只读源项目、不修改**，所有产物写入 `--output` 目录。
+
+```bash
+# 未配置凭证时会弹出交互式向导（见下方「LLM 凭证」）；
+# 也可直接用环境变量预先配置好：
+export OPENAI_BASE_URL=https://api.deepseek.com/v1
+export OPENAI_API_KEY=sk-xxxx
+export OPENAI_MODEL=deepseek-chat
+
+npx mp-skills gen ./my-miniprogram \
+  --output ./generated \
+  --scenario "咖啡点单、订单管理"
+```
+
+| 选项                | 说明                                                 |
+| ------------------- | ---------------------------------------------------- |
+| `--output <dir>`    | （必填）生成的 Skill 文件输出目录                    |
+| `--scenario <desc>` | 业务场景描述，帮助模型聚焦（如：商品检索、订单管理） |
+| `--model <name>`    | 模型名，默认取 `OPENAI_MODEL`，回退 `gpt-4o`         |
+| `--env <envId>`     | CloudBase 环境 ID（透传给下游，可选）                |
+| `--max-turns <n>`   | Agent 最大轮次（默认 30）                            |
+
+源项目的 `app.json` 位置自动识别：优先读 `project.config.json` 的 `miniprogramRoot`，否则回退根目录或 `miniprogram/`。
+
+### eval
+
+对一个**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。
+
+```bash
+export OPENAI_BASE_URL=https://api.deepseek.com/v1
+export OPENAI_API_KEY=sk-xxxx
+export OPENAI_MODEL=deepseek-chat
+
+npx mp-skills eval ./my-miniprogram --cases 3
+```
+
+| 选项              | 说明                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `--env <envId>`   | CloudBase 环境 ID。**BYOK 模式下可省略**——key 直接来自 `OPENAI_*`，无需用 env 去网关换取；仅在需要透传给下游时填写 |
+| `-c, --cases <n>` | 生成的测试用例数（默认 1）                                                                                         |
+| `--skill <name>`  | 只评估指定 Skill（默认评估全部）                                                                                   |
+| `--headless`      | 无界面模式，适合 CI 环境                                                                                           |
+| `--mode <mode>`   | 评估模式，`official`（默认）或 `agent`                                                                             |
+
+**两种评估模式**（实际评测都由官方 `wxa-skills-eval` CLI 执行）：
+
+- `official`（默认）：mp-skills 直接拼好命令行调用官方 CLI，参数固定、可预期，适合 CI。
+- `agent`：启动内置 coding agent（用 BYOK 凭证），让它读取 `wxa-skills-eval/SKILL.md` 后**自主调用官方 CLI** 发起评测，并按 SKILL.md 的续跑/排错指引自动重试。相比手敲命令更省心。
+
+```bash
+# agent 模式
+npx mp-skills eval ./my-miniprogram --mode agent --cases 3
+```
+
+> 两种模式都依赖微信开发者工具（官方 CLI 的硬性要求）。
+
+## LLM 凭证（BYOK）
+
+`gen` 与 `eval` 共用**同一套** OpenAI 兼容凭证，按以下优先级解析：
+
+1. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` ← **推荐**
+2. `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`（或 `ANTHROPIC_API_KEY`） / `ANTHROPIC_MODEL`
+3. `CLOUDBASE_AI_ENDPOINT` / `CLOUDBASE_API_KEY` / `CLOUDBASE_AI_MODEL`
+
+运行前还会自动加载当前目录的 `.env`（不覆盖已显式 `export` 的变量）。
+
+### 交互式向导
+
+若运行 `gen`/`eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
+
+```
+? 请选择 LLM 提供方：
+  ❯ CloudBase（云开发 AI 网关，自动获取密钥）
+    DeepSeek
+    智谱 GLM
+    Kimi（Moonshot）
+    MiniMax
+    自定义（手填 endpoint / key / model）
+```
+
+#### 提供方详解
+
+**1. CloudBase（云开发 AI 网关）**
+
+自动完成整套凭证配置，无需手动管理密钥：
+
+1. **登录验证**：自动检测 CloudBase CLI 登录状态，未登录会提示先登录
+2. **选择环境**：列出你的所有 CloudBase 环境，选择其中一个
+3. **选择模型**：以表格形式展示可用模型（模型名、提供商、状态），已开启的排在前面的，未开启的会提示去控制台开通
+4. **API Key 管理**：选择已有 API Key（自动获取明文）或新建一个
+
+```
+┌─────────────────────┬────────────┬──────────┐
+│ 模型                │ 提供商     │ 状态     │
+├─────────────────────┼────────────┼──────────┤
+│ deepseek-v3         │ deepseek   │ 已开启   │
+│ glm-4               │ zhipu      │ 已开启   │
+│ moonshot-v1         │ moonshot   │ 未开启   │
+└─────────────────────┴────────────┴──────────┘
+```
+
+完成后自动拼接出 CloudBase AI 网关的 OpenAI 兼容凭证（Base URL 含环境 ID 和模型路径）。
+
+**2. 预设提供方**
+
+内置了常用 LLM 提供方的端点和默认模型，只需填写 API Key 即可：
+
+| 提供方        | 环境变量前缀 | 默认模型           | Base URL                              |
+| ------------- | ------------- | ------------------ | ------------------------------------- |
+| DeepSeek      | `OPENAI_`     | `deepseek-v4-flash`| `https://api.deepseek.com/v1`         |
+| 智谱 GLM      | `OPENAI_`     | `glm-5.1`         | `https://open.bigmodel.cn/api/paas/v4`|
+| Kimi (Moonshot) | `OPENAI_`   | `kimi-k2.6`       | `https://api.moonshot.cn/v1`          |
+| MiniMax       | `OPENAI_`     | `minimax-m2.7`    | `https://api.minimaxi.com/v1`         |
+
+选择预设提供方后，只需输入：
+- **API Key**（必填）
+- **模型名**（可选，默认使用上表中的默认模型）
+
+**3. 自定义**
+
+完全手动填写 OpenAI 兼容接口的凭证：
+
+- **Base URL**：如 `https://api.openai.com/v1`
+- **API Key**（必填）
+- **模型名**（必填）
+
+### 凭证持久化
+
+选完的凭证会写入当前目录的 `.env` 文件（`OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`），下次运行时自动加载，不再弹出向导。
+
+```bash
+# 写入的 .env 示例
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_API_KEY=sk-xxxx
+OPENAI_MODEL=deepseek-v4-flash
+```
+
+> ⚠️ **安全提示**：`.env` 含明文密钥，请注意保管，建议加入 `.gitignore`：
+> ```
+> echo ".env" >> .gitignore
+> ```
+
+### 非交互式环境（CI）
+
+在非交互式环境（如 CI/CD）下不会弹出向导，缺凭证时会打印所需环境变量并退出。需在运行前通过环境变量或 `.env` 文件配置好凭证。
+
+### URL 规范化
+
+`BASE_URL` 会自动规范化处理：
+
+- 去掉末尾的 `/`
+- 剥离 `/anthropic` 或 `/messages` 后缀
+- 补上 `/v1` 路径
+
+例如：
+- `https://api.deepseek.com` → `https://api.deepseek.com/v1`
+- `https://api.deepseek.com/anthropic` → `https://api.deepseek.com/v1`
+
+只需配置一组凭证即可同时驱动 `gen`（opencode）和 `eval`（wxa-skills-eval）。
 
 ## add 做了什么
 

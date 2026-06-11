@@ -150,6 +150,40 @@ program
       await renderCommand(opts)
     }),
   )
+// ── gen — 根据已有小程序项目生成 Skills ──────────────────
+program
+  .command('gen <project-dir>')
+  .description('分析已有小程序项目，调用 opencode 生成符合 wx.modelContext 规范的 Skill 分包')
+  .option('--env <envId>', 'CloudBase 环境 ID（透传给下游）', '')
+  .requiredOption('--output <dir>', '生成的 Skill 文件输出目录')
+  .option('--scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
+  .option('--model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')
+  .option('--max-turns <n>', 'Agent 最大轮次（默认 30）')
+  .action(async (projectDir, opts) => {
+    const { genCommand } = await import('./commands/gen.js')
+    await genCommand(projectDir, opts)
+  })
+
+// ── eval — 对 Skills 项目启动端到端评估 ──────────────────
+program
+  .command('eval <project-dir>')
+  .description('对已有 Skills 项目启动端到端质量评估（需先安装 wxa-skills-eval）')
+  .option('--env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
+  .option('-c, --cases <n>', '生成的测试用例数', '1')
+  .option('--skill <name>', '只评估指定 Skill（默认评估全部）')
+  .option('--headless', '无界面模式，适合 CI 环境', false)
+  .option('--mode <mode>', '评估模式：official（直接调官方 CLI）| agent（自主调官方 CLI）', 'official')
+  .option(
+    '--provider <name>',
+    `LLM 提供方预设（deepseek / glm / kimi / minimax）；预填 baseUrl 与默认 model，仍需配置 OPENAI_API_KEY`,
+  )
+  .option('--model <name>', '模型名，覆盖 --provider 预设与 OPENAI_MODEL 环境变量')
+  .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖 OPENAI_API_KEY 环境变量')
+  .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与 OPENAI_BASE_URL 环境变量')
+  .action(async (projectDir, opts) => {
+    const { evalCommand } = await import('./commands/eval.js')
+    await evalCommand(projectDir, opts)
+  })
 
 // Parse args
 program.parse()
