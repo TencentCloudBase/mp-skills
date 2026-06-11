@@ -41,6 +41,8 @@ export async function newCommand(name: string): Promise<void> {
 
   log(`\n✅ 项目已创建: ${name}`)
   log(`   cd ${name}`)
+  log(`   ⚙️  编辑 project.config.json，将 appid 替换为你的小程序 AppID`)
   log(`   mp-skills add awesome-miniprogram --skill drink-skill`)
   log(`   或查看 docs/SKILL-DEV-GUIDE.md`)
+  log(`   或使用微信开发者工具打开本项目`)
 }
