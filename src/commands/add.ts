@@ -75,6 +75,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
             skillName: entry.name,
             source: sourceInfo.original,
           })
+          trackCommand({ command: 'add:install', detail: `local:${entry.name}` }).catch(() => {})
           count++
         }
         log(`\n✅ 已安装 ${count} 个 Skill`)
@@ -134,6 +135,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
             skillName: s.name,
             source: sourceInfo.repoName || sourceInfo.repoUrl,
           })
+          trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${s.name}` }).catch(() => {})
           count++
         }
       }
