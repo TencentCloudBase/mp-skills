@@ -3,7 +3,7 @@
 让微信小程序接入 AI 生态——为小程序安装 `wx.modelContext` Skill，构建 AI 友好的小程序。
 
 ```bash
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --list
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 ```
 
 ---
@@ -14,7 +14,7 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --list
 
 ```bash
 # 查看仓库中有哪些可用 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --list
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
 # 安装指定的 Skill
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill

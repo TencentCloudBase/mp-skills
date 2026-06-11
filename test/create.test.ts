@@ -11,28 +11,16 @@ import { createCommand } from '../src/commands/create.js'
 function createMiniProgramProject(baseDir: string, mpRoot = 'miniprogram') {
   const proj = join(baseDir, 'project')
   mkdirSync(join(proj, mpRoot), { recursive: true })
-  writeFileSync(
-    join(proj, mpRoot, 'app.json'),
-    JSON.stringify({ pages: ['pages/index/index'], window: {} }),
-  )
-  writeFileSync(
-    join(proj, 'project.config.json'),
-    JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }),
-  )
+  writeFileSync(join(proj, mpRoot, 'app.json'), JSON.stringify({ pages: ['pages/index/index'], window: {} }))
+  writeFileSync(join(proj, 'project.config.json'), JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }))
   return proj
 }
 
 function createMiniProgramRootOnly(baseDir: string, mpRoot = 'miniprogram') {
   const proj = join(baseDir, 'root-only')
   mkdirSync(join(proj, mpRoot), { recursive: true })
-  writeFileSync(
-    join(proj, mpRoot, 'app.json'),
-    JSON.stringify({ pages: ['pages/index/index'], window: {} }),
-  )
-  writeFileSync(
-    join(proj, 'project.config.json'),
-    JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }),
-  )
+  writeFileSync(join(proj, mpRoot, 'app.json'), JSON.stringify({ pages: ['pages/index/index'], window: {} }))
+  writeFileSync(join(proj, 'project.config.json'), JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }))
   return proj
 }
 
@@ -50,7 +38,10 @@ describe('createCommand (Skill 骨架创建)', () => {
         assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting')), 'Skill 目录应存在')
         assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'SKILL.md')), 'SKILL.md 应存在')
         assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'mcp.json')), 'mcp.json 应存在')
-        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'apis', 'greet.js')), 'apis/greet.js 应存在')
+        assert.ok(
+          existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'apis', 'greet.js')),
+          'apis/greet.js 应存在',
+        )
       } finally {
         process.chdir(origCwd)
       }

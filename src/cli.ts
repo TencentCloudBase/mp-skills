@@ -17,7 +17,6 @@ program
 program
   .command('add <source>')
   .description('Install a Skill from a registry name, GitHub repo, URL, or local path')
-  .option('-l, --list', 'List available Skills without installing')
   .option('--skill <name>', 'Install a specific Skill from the source')
   .option('--all', 'Install all Skills from the source')
   .option('-y, --yes', 'Skip confirmation prompts')

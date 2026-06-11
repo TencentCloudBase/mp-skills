@@ -12,7 +12,6 @@ import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
 
 interface AddOptions {
-  list?: boolean
   skill?: string
   all?: boolean
   yes?: boolean
@@ -44,25 +43,6 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     if (!existsSync(appJsonPath)) {
       warn(`未找到 ${miniprogramRoot}/app.json`)
       log('请确认项目结构正确')
-      return
-    }
-
-    // ── --list 模式 ──
-    if (opts.list) {
-      title(`📋 来源: ${sourceInfo.original}`)
-      const skills = await listRemoteSkills(sourceInfo)
-      if (skills.length === 0) {
-        log('   没有找到符合 wx.modelContext 规范的 Skill')
-        return
-      }
-      for (const s of skills) {
-        const lock = readLock(projectPath)
-        const installed = lock.skills.find((l) => l.name === s.name)
-        log(`  ${s.name}${installed ? ' ✓ 已安装' : ''}`)
-      }
-      log(`\n共 ${skills.length} 个`)
-      log(`安装: mp-skills add ${source} --all`)
-      log(`或:   mp-skills add ${source} --skill <name>`)
       return
     }
 
