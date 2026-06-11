@@ -18,5 +18,10 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run format:check
-      - run: npm test
+      - name: Run tests
+        run: |
+          echo "=== installer ===" && npx tsx --test test/installer.test.ts
+          echo "=== lock-file ===" && npx tsx --test test/lock-file.test.ts
+          echo "=== sanitize ===" && npx tsx --test test/sanitize.test.ts
+          echo "=== source-parser ===" && npx tsx --test test/source-parser.test.ts
       - run: npm run build
