@@ -78,6 +78,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
           count++
         }
         log(`\n✅ 已安装 ${count} 个 Skill`)
+        trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
       } else {
         // 只安装了本地路径本身
         const skillName = opts.skill || skillLocalPath.split('/').pop() || 'unknown'
@@ -87,6 +88,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         })
       }
       log(`\n✅ 已完成！`)
+      trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
       return
     }
 
@@ -117,6 +119,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       })
       cleanupClone(tmpDir)
       log(`\n✅ 安装完成！`)
+      trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${opts.skill}` }).catch(() => {})
       return
     }
 
@@ -136,6 +139,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       }
       cleanupClone(tmpDir)
       log(`\n✅ 已安装 ${count} 个 Skill`)
+      trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:all(${count})` }).catch(() => {})
       return
     }
 
@@ -180,6 +184,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       }
       cleanupClone(tmpDir)
       log(`\n✅ 已安装 ${selectedNames.length} 个 Skill`)
+      trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${selected}` }).catch(() => {})
     } else {
       // 非交互模式 → 打印列表
       title(`发现 ${skills.length} 个 Skill:`)
