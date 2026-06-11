@@ -22,6 +22,7 @@ jobs:
         run: |
           set +e
           FAIL=0
+          echo "=== new ===" && npx tsx --test test/new.test.ts || { echo "❌ new FAILED"; FAIL=1; }
           echo "=== create ===" && npx tsx --test test/create.test.ts || { echo "❌ create FAILED"; FAIL=1; }
           echo "=== installer ===" && npx tsx --test test/installer.test.ts || { echo "❌ installer FAILED"; FAIL=1; }
           echo "=== lock-file ===" && npx tsx --test test/lock-file.test.ts || { echo "❌ lock-file FAILED"; FAIL=1; }

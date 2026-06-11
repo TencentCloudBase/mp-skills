@@ -56,22 +56,22 @@ program
     await removeCommand(name, opts)
   })
 
-// ── init — 创建一个空的 Skill 模板 ────────────────────────
+// ── create — 在已有项目中创建一个新的 Skill ───────────────
 program
-  .command('init [name]')
-  .description('Create an empty Skill template in the current or specified directory')
-  .action(async (name) => {
-    const { initCommand } = await import('./commands/init.js')
-    await initCommand(name || 'my-skill')
-  })
-
-// ── create — 创建一个新的小程序项目 ─────────────────────
-program
-  .command('create <name>')
-  .description('Create a new mini-program project with AI Skill support')
+  .command('create [name]')
+  .description('Create a new Skill skeleton in the current project')
   .action(async (name) => {
     const { createCommand } = await import('./commands/create.js')
     await createCommand(name)
+  })
+
+// ── new — 创建一个新的小程序项目 ──────────────────────────
+program
+  .command('new <name>')
+  .description('Create a new mini-program project with AI Skill support')
+  .action(async (name) => {
+    const { newCommand } = await import('./commands/new.js')
+    await newCommand(name)
   })
 
 // ── update — 更新已安装的 Skill ──────────────────────────

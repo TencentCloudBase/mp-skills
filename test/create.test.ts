@@ -1,110 +1,88 @@
 // test/create.test.ts
-// 创建项目命令测试
+// 创建新 Skill 骨架测试
 
 import { describe, it } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { existsSync, readFileSync, mkdtempSync, mkdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createCommand } from '../src/commands/create.js'
 
-describe('createCommand', () => {
-  describe('创建新项目', () => {
+function createMiniProgramProject(baseDir: string, mpRoot = 'miniprogram') {
+  const proj = join(baseDir, 'project')
+  mkdirSync(join(proj, mpRoot), { recursive: true })
+  writeFileSync(
+    join(proj, mpRoot, 'app.json'),
+    JSON.stringify({ pages: ['pages/index/index'], window: {} }),
+  )
+  writeFileSync(
+    join(proj, 'project.config.json'),
+    JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }),
+  )
+  return proj
+}
+
+function createMiniProgramRootOnly(baseDir: string, mpRoot = 'miniprogram') {
+  const proj = join(baseDir, 'root-only')
+  mkdirSync(join(proj, mpRoot), { recursive: true })
+  writeFileSync(
+    join(proj, mpRoot, 'app.json'),
+    JSON.stringify({ pages: ['pages/index/index'], window: {} }),
+  )
+  writeFileSync(
+    join(proj, 'project.config.json'),
+    JSON.stringify({ appid: 'test', miniprogramRoot: mpRoot + '/' }),
+  )
+  return proj
+}
+
+describe('createCommand (Skill 骨架创建)', () => {
+  describe('在项目内创建 Skill', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
-    const projectDir = join(tmpDir, 'my-app')
+    const projectDir = createMiniProgramRootOnly(tmpDir)
 
-    it('项目创建成功', async () => {
-      // 清理可能存在的残留
-      try { await createCommand(projectDir) } catch {}
-      assert.ok(existsSync(projectDir), '项目目录应存在')
+    it('在项目目录下创建成功', async () => {
+      const origCwd = process.cwd()
+      process.chdir(projectDir)
+      try {
+        await createCommand('my-greeting')
+        // Skill 创建在 miniprogram/skills/ 下
+        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting')), 'Skill 目录应存在')
+        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'SKILL.md')), 'SKILL.md 应存在')
+        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'mcp.json')), 'mcp.json 应存在')
+        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting', 'apis', 'greet.js')), 'apis/greet.js 应存在')
+      } finally {
+        process.chdir(origCwd)
+      }
     })
 
-    it('生成了 app.json', () => {
-      const appJson = join(projectDir, 'miniprogram', 'app.json')
-      assert.ok(existsSync(appJson), 'app.json 应存在')
-      const app = JSON.parse(readFileSync(appJson, 'utf-8'))
-      assert.ok(app.pages)
-      assert.ok(app.window)
-    })
-
-    it('生成了 project.config.json', () => {
-      const configPath = join(projectDir, 'project.config.json')
-      assert.ok(existsSync(configPath), 'project.config.json 应存在')
-      const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-      assert.ok(config.description, '应有描述')
-      assert.ok(config.packOptions?.include, '应有 packOptions')
-    })
-
-    it('生成了 mcp.json', () => {
-      const mcpPath = join(projectDir, '.mcp.json')
-      assert.ok(existsSync(mcpPath), '.mcp.json 应存在')
-    })
-
-    it('生成了 README.md', () => {
-      const readmePath = join(projectDir, 'README.md')
-      assert.ok(existsSync(readmePath), 'README.md 应存在')
-    })
-
-    it('生成了云函数骨架', () => {
-      const funcPath = join(projectDir, 'cloudfunctions', 'getOpenId', 'index.js')
-      assert.ok(existsSync(funcPath), '云函数 getOpenId 应存在')
-    })
-
-    it('生成了首页页面', () => {
-      const pagePath = join(projectDir, 'miniprogram', 'pages', 'index', 'index.js')
-      assert.ok(existsSync(pagePath), '页面 index.js 应存在')
-      assert.ok(existsSync(join(projectDir, 'miniprogram', 'pages', 'index', 'index.wxml')))
-      assert.ok(existsSync(join(projectDir, 'miniprogram', 'pages', 'index', 'index.wxss')))
-      assert.ok(existsSync(join(projectDir, 'miniprogram', 'pages', 'index', 'index.json')))
-    })
-
-    it('生成了开发指南', () => {
-      const guide = join(projectDir, 'docs', 'SKILL-DEV-GUIDE.md')
-      assert.ok(existsSync(guide), 'SKILL-DEV-GUIDE.md 应存在')
-    })
-
-    it('生成了 git 仓库', () => {
-      const gitDir = join(projectDir, '.git')
-      // git init 可能失败（无 git），跳过
-      // 只是验证创建不报错即可
+    it('重复创建提示已存在', async () => {
+      const origCwd = process.cwd()
+      process.chdir(projectDir)
+      try {
+        await createCommand('my-greeting')
+        // 不抛异常，只输出警告
+        assert.ok(existsSync(join(projectDir, 'miniprogram', 'skills', 'my-greeting')))
+      } finally {
+        process.chdir(origCwd)
+      }
     })
   })
 
-  describe('已存在的目录', () => {
+  describe('缺少项目配置', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
-    const projectDir = join(tmpDir, 'existing')
 
-    it('目录已存在时发出警告并跳过', async () => {
-      mkdirSync(projectDir, { recursive: true })
-      // 应该不报错，只输出警告
-      // createCommand 内部调用 warn 后 return
-      await createCommand(projectDir)
-      // 目录仍然存在，未抛异常
-      assert.ok(existsSync(projectDir))
-    })
-  })
-
-  describe('项目名称', () => {
-    it('相对路径项目名', async () => {
-      const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
-      // 不能用 CD 过去，直接传绝对路径
-      const absPath = join(tmpDir, 'relative-project')
-      await createCommand(absPath)
-      assert.ok(existsSync(absPath))
-    })
-
-    it('带连字符的名称', async () => {
-      const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
-      const dir = join(tmpDir, 'my-skill-app')
-      await createCommand(dir)
-      assert.ok(existsSync(dir))
-    })
-
-    it('带点的名称', async () => {
-      const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
-      const dir = join(tmpDir, 'my.app')
-      await createCommand(dir)
-      assert.ok(existsSync(dir))
+    it('无 project.config.json 时提示错误', async () => {
+      const emptydir = join(tmpDir, 'empty')
+      mkdirSync(emptydir, { recursive: true })
+      const origCwd = process.cwd()
+      process.chdir(emptydir)
+      try {
+        await createCommand('test-skill')
+        // 不抛异常，只输出警告
+      } finally {
+        process.chdir(origCwd)
+      }
     })
   })
 })
