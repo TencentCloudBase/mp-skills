@@ -5,7 +5,7 @@ import { log, title, warn } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
 
 const REGISTRY_URL =
-  'https://raw.githubusercontent.com/TencentCloudBase/awesome-miniprogram-skills/feat/skill-market/cli/src/registry.json'
+  'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
 
 interface Registry {
   version: number

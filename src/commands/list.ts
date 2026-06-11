@@ -34,8 +34,8 @@ export async function listCommand(opts: ListOptions): Promise<void> {
 
   if (opts.remote || opts.all) {
     title('\n📡 从远程仓库安装:')
-    log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills --list')
-    log('  mp-skills add wechat-miniprogram/ai-mode-skills --list')
+    log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills')
+    log('  mp-skills add wechat-miniprogram/ai-mode-skills')
   }
 }
 
