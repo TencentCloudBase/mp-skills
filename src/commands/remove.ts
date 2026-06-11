@@ -20,9 +20,7 @@ export async function removeCommand(name: string, opts: RemoveOptions): Promise<
   if (existsSync(appJsonPath)) {
     const app = JSON.parse(readFileSync(appJsonPath, 'utf-8'))
     if (app.agent?.skills) {
-      app.agent.skills = app.agent.skills.filter(
-        (s: { path: string }) => s.path !== `skills/${name}`,
-      )
+      app.agent.skills = app.agent.skills.filter((s: { path: string }) => s.path !== `skills/${name}`)
       writeFileSync(appJsonPath, JSON.stringify(app, null, 2) + '\n')
     }
   }

@@ -16,7 +16,7 @@ export function sanitizeGitUrl(url: string): string {
 
 /**
  * 消毒分支名/引用名
- * Git refs 只允许：字母数字 . / - _ 
+ * Git refs 只允许：字母数字 . / - _
  */
 export function sanitizeRef(ref: string): string {
   const safe = ref.replace(/[^a-zA-Z0-9.\/\-_]/g, '')

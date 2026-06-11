@@ -11,8 +11,7 @@
 import crypto from 'node:crypto'
 import os from 'node:os'
 
-const BEACON_URL =
-  process.env.MP_SKILLS_BEACON_URL || 'https://otheve.beacon.qq.com/analytics/v2_upload'
+const BEACON_URL = process.env.MP_SKILLS_BEACON_URL || 'https://otheve.beacon.qq.com/analytics/v2_upload'
 
 let cliVersion = 'unknown'
 let deviceId = ''
@@ -21,9 +20,10 @@ let enabled = true
 // ── 初始化 ──
 
 function init() {
-  enabled = process.env.MP_SKILLS_TELEMETRY_DISABLED !== 'true' &&
-            process.env.DISABLE_TELEMETRY !== '1' &&
-            process.env.DO_NOT_TRACK !== '1'
+  enabled =
+    process.env.MP_SKILLS_TELEMETRY_DISABLED !== 'true' &&
+    process.env.DISABLE_TELEMETRY !== '1' &&
+    process.env.DO_NOT_TRACK !== '1'
 
   if (!enabled) return
 
@@ -31,7 +31,10 @@ function init() {
   try {
     const info = [
       os.hostname(),
-      os.cpus().map(c => c.model).join(','),
+      os
+        .cpus()
+        .map((c) => c.model)
+        .join(','),
       Object.values(os.networkInterfaces())
         .flat()
         .filter((n: any) => n && !n.internal && n.mac)

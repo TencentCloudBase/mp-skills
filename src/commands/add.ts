@@ -162,8 +162,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     // 未指定 → 交互选择
     if (process.stdin.isTTY && skills.length > 1) {
       // 尝试从注册表获取描述
-      const registryUrl =
-        'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
+      const registryUrl = 'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
       let descMap = new Map<string, string>()
       try {
         const res = await fetch(registryUrl, {

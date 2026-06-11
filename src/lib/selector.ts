@@ -45,9 +45,7 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
     if (!query) return items
     const q = query.toLowerCase()
     return items.filter(
-      (item) =>
-        item.label.toLowerCase().includes(q) ||
-        (item.description || '').toLowerCase().includes(q),
+      (item) => item.label.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q),
     )
   }
 
