@@ -6,6 +6,6 @@
 
 1. 在 `project.config.json` 中填写 `appid`
 2. 在 `miniprogram/app.js` 中填写云开发环境 ID
-3. 添加 AI Skill: `mp-skills add awesome-miniprogram --skill drink-skill`
+3. 添加 AI Skill: `mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill`
 4. 用微信开发者工具打开项目
 5. 参考 `docs/SKILL-DEV-GUIDE.md` 开发你的 Skill
