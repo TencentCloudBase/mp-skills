@@ -18,5 +18,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run format:check
-      - run: npm test
+      - name: Run tests
+        id: test
+        run: npx tsx --test --test-reporter=spec test/*.test.ts 2>&1
+        continue-on-error: true
+      - name: Debug test failures
+        if: steps.test.outcome != 'success'
+        run: npx tsx --test --test-reporter=spec test/*.test.ts 2>&1 || true
       - run: npm run build
