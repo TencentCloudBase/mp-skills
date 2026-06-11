@@ -31,7 +31,7 @@ export function sanitizeRef(ref: string): string {
  */
 export function sanitizeSkillName(name: string): string {
   // 移除以 . 和 / 开头的路径穿越尝试
-  const cleaned = name.replace(/^[.\/\\]+/, '').replace(/[.\/\\]+/g, '-')
+  const cleaned = name.replace(/^[.\/\\]+/, '').replace(/[.\/\\:]+/g, '-')
   return cleaned || 'unknown'
 }
 

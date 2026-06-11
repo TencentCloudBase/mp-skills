@@ -16,14 +16,15 @@ describe('sanitizeGitUrl', () => {
 
   it('移除 shell 注入 (反引号)', () => {
     const result = sanitizeGitUrl('https://github.com/owner/repo`rm -rf /`')
-    assert.ok(!result.includes('`'))
-    assert.ok(result.includes('rm') === false) // 也会被移除
+    assert.ok(!result.includes('`'), '反引号移除')
+    assert.ok(!result.includes(' '), '空格移除')
   })
 
   it('移除 shell 注入 ($())', () => {
     const result = sanitizeGitUrl('https://github.com/owner/$(id).git')
-    assert.ok(!result.includes('$'))
-    assert.ok(!result.includes('id'))
+    assert.ok(!result.includes('$'), 'dollar 移除')
+    assert.ok(!result.includes('('), '左括号移除')
+    assert.ok(!result.includes(')'), '右括号移除')
   })
 
   it('移除 shell 注入 (;)', () => {

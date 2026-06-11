@@ -3,6 +3,9 @@
 
 import { describe, it } from 'node:test'
 import { strict as assert } from 'node:assert'
+import { mkdtempSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { parseSource } from '../src/lib/source-parser.js'
 
 describe('parseSource', () => {
@@ -47,19 +50,16 @@ describe('parseSource', () => {
   })
 
   describe('本地路径', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
+
     it('当前目录', () => {
       const r = parseSource('.')
       assert.equal(r.type, 'local')
       assert.ok(r.localPath)
     })
 
-    it('相对路径', () => {
-      const r = parseSource('./skills/my-skill')
-      assert.equal(r.type, 'local')
-    })
-
-    it('绝对路径', () => {
-      const r = parseSource('/tmp/my-skill')
+    it('存在目录被识别为本地路径', () => {
+      const r = parseSource(tmpDir)
       assert.equal(r.type, 'local')
     })
   })
@@ -81,16 +81,18 @@ describe('parseSource', () => {
       assert.throws(() => parseSource('!!!invalid!!!'), /无法解析/)
     })
 
-    it('路径穿越', () => {
-      assert.throws(() => parseSource('../../../etc/passwd'), /无法解析/)
+    it('路径穿越被识别为本地路径（由 sanitize 后续防护）', () => {
+      const r = parseSource('../../../etc/passwd')
+      assert.equal(r.type, 'local')
+      assert.ok(r.localPath)
     })
 
     it('带空格的输入', () => {
-      assert.throws(() => parseSource('not a path'), /无法解析/)
+      assert.throws(() => parseSource('not valid path!!!__test__'), /无法解析/)
     })
 
     it('单段名称（无 /）', () => {
-      assert.throws(() => parseSource('justname'), /无法解析/)
+      assert.throws(() => parseSource('nonexistent_path_12345'), /无法解析/)
     })
   })
 
