@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID, createHash } from 'node:crypto'
 import type { SourceInfo } from '../types.js'
+import { sanitizeGitUrl, sanitizeRef } from './sanitize.js'
 
 /**
  * 使用 GitHub Trees API 列出远程仓库 skills/ 下的所有 Skill
@@ -133,10 +134,12 @@ function getGitHubToken(): string {
  * Clone 仓库到临时目录
  */
 export function cloneRepo(repoUrl: string, ref: string = 'main'): string {
+  const safeUrl = sanitizeGitUrl(repoUrl)
+  const safeRef = sanitizeRef(ref)
   const tmpDir = join(tmpdir(), 'mp-skills-' + randomUUID().slice(0, 8))
   mkdirSync(tmpDir, { recursive: true })
 
-  execSync(`git clone --depth 1 --branch ${ref} "${repoUrl}" "${tmpDir}"`, {
+  execSync(`git clone --depth 1 --branch "${safeRef}" "${safeUrl}" "${tmpDir}"`, {
     stdio: 'ignore',
     timeout: 30_000,
   })
