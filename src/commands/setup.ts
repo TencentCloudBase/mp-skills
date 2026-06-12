@@ -172,6 +172,32 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
     return
   }
 
+  // ── 交互选择待创建集合 ──
+  const selectItems = [
+    { value: '__all__', label: '全部集合', description: `创建全部 ${all.length} 个集合` },
+    ...all.map((c) => ({
+      value: c.name,
+      label: c.name,
+      description: `${c.description || '-'}（${c.skills.join(', ')}）`,
+    })),
+  ]
+
+  const selected = await fuzzySelect(selectItems, { multiSelect: true })
+  if (!selected) {
+    console.log('  已取消')
+    return
+  }
+
+  const selectedNames = selected.split(',').filter(Boolean)
+  const toCreate = selectedNames.includes('__all__') ? all : all.filter((c) => selectedNames.includes(c.name))
+
+  if (toCreate.length === 0) {
+    console.log('  未选择任何集合')
+    return
+  }
+
+  console.log(`  即将创建 ${toCreate.length} 个集合`)
+
   const app = CloudBase.init({
     secretId: cred.tmpSecretId,
     secretKey: cred.tmpSecretKey,
@@ -183,7 +209,7 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
   let created = 0
   let errorCount = 0
 
-  for (const col of all) {
+  for (const col of toCreate) {
     console.log(`  ${col.name}...`)
 
     // 1. 创建集合
@@ -244,7 +270,7 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
   if (errorCount > 0) {
     console.log(`  ⚠️  ${errorCount} 个集合创建失败，请查看上面错误信息`)
   } else {
-    console.log(`  ✅ 数据库初始化完成（${created}/${all.length}）`)
+    console.log(`  ✅ 数据库初始化完成（${created}/${toCreate.length}）`)
   }
 
   updateDeployedIfChanged(projectPath, { collections: all.map((c) => c.name) })
