@@ -23,14 +23,14 @@
       },
       "_meta": {
         "ui": {
-          "componentPath": "skills/greet-skill/components/welcome-card/index"
+          "componentPath": "components/welcome-card/index"
         }
       }
     }
   ],
   "components": [
     {
-      "path": "skills/greet-skill/components/welcome-card/index",
+      "path": "components/welcome-card/index",
       "relatedPage": "/pages/index/index"
     }
   ]

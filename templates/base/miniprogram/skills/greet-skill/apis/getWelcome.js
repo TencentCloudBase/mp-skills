@@ -1,7 +1,7 @@
 // skills/greet-skill/apis/getWelcome.js — 首页欢迎接口
 // 返回欢迎信息 + 快捷操作 + 推荐 Skill 列表
 
-function getWelcome(params = {}) {
+async function getWelcome(params = {}) {
   const { userId } = params || {}
   const userName = wx.getStorageSync('userName') || ''
 
