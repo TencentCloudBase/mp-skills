@@ -159,6 +159,7 @@ program
   .option('--database', '仅处理数据库')
   .option('--services', '仅检查服务')
   .option('--dry-run', '预览，不实际执行')
+  .option('--env-id <id>', '云开发环境 ID（未指定则从项目配置读取）')
   .action(
     track('setup', async (dir, opts) => {
       const { setupCommand } = await import('./commands/setup.js')

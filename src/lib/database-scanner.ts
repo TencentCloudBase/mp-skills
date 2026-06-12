@@ -1,16 +1,22 @@
 // ── 数据库扫描器 ──
-// 扫描 skills/*/database/collections.json，合并去重，
-// 输出集合与indexes创建命令
+// 扫描 skills/*/cloudbaserc.json 中的 database.collections，合并去重
 
 import { existsSync, readFileSync, readdirSync, type Dirent } from 'node:fs'
 import { join } from 'node:path'
-import type { CollectionInfo, CollectionDeclaration } from '../types.js'
 import { resolveMiniprogramRoot } from './utils.js'
 
+interface MergedCollection {
+  name: string
+  description: string
+  indexes: Array<{ field: string | string[]; unique?: boolean }>
+  aclTag?: string
+  skills: string[]
+}
+
 /**
- * 扫描并合并所有 Skill 的数据库集合声明
+ * 扫描并合并所有 Skill cloudbaserc.json 中的数据库集合声明
  */
-export function scanCollections(projectPath: string): CollectionInfo[] {
+export function scanCollections(projectPath: string): MergedCollection[] {
   const mpRoot = resolveMiniprogramRoot(projectPath)
   const skillsDir = mpRoot ? join(mpRoot, 'skills') : join(projectPath, 'skills')
   if (!existsSync(skillsDir)) return []
@@ -19,33 +25,38 @@ export function scanCollections(projectPath: string): CollectionInfo[] {
     (e: Dirent) => e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('_'),
   )
 
-  const collectionMap = new Map<string, CollectionInfo>()
+  const collectionMap = new Map<string, MergedCollection>()
 
   for (const skillDir of skillDirs) {
-    const collectionsPath = join(skillsDir, skillDir.name, 'database', 'collections.json')
-    if (!existsSync(collectionsPath)) continue
+    const cloudbasercPath = join(skillsDir, skillDir.name, 'cloudbaserc.json')
+    if (!existsSync(cloudbasercPath)) continue
 
     try {
-      const raw = JSON.parse(readFileSync(collectionsPath, 'utf-8'))
-      const declarations: CollectionDeclaration[] = raw.collections || []
+      const raw = JSON.parse(readFileSync(cloudbasercPath, 'utf-8'))
+      const collections = raw?.database?.collections || []
+      if (collections.length === 0) continue
 
-      for (const decl of declarations) {
-        const existing = collectionMap.get(decl.name)
+      for (const col of collections) {
+        const existing = collectionMap.get(col.name as string)
         if (existing) {
-          // 合并：追加 skill 引用，合并indexes（去重）
           if (!existing.skills.includes(skillDir.name)) {
             existing.skills.push(skillDir.name)
           }
-          for (const idx of decl.indexes || []) {
-            if (!existing.indexes.some((e) => e.name === idx.name)) {
+          for (const idx of col.indexes || []) {
+            const field = Array.isArray(idx.field) ? idx.field.join(',') : idx.field
+            if (!existing.indexes.some((e) => {
+              const ef = Array.isArray(e.field) ? e.field.join(',') : e.field
+              return ef === field
+            })) {
               existing.indexes.push(idx)
             }
           }
         } else {
-          collectionMap.set(decl.name, {
-            name: decl.name,
-            description: decl.description || '',
-            indexes: decl.indexes || [],
+          collectionMap.set(col.name as string, {
+            name: col.name as string,
+            description: col.description || '',
+            indexes: col.indexes || [],
+            aclTag: col.aclTag,
             skills: [skillDir.name],
           })
         }
@@ -61,7 +72,7 @@ export function scanCollections(projectPath: string): CollectionInfo[] {
 /**
  * 生成集合创建指引
  */
-export function generateCollectionGuides(collections: CollectionInfo[]): string[] {
+export function generateCollectionGuides(collections: MergedCollection[]): string[] {
   const lines: string[] = []
 
   if (collections.length === 0) {
@@ -75,39 +86,28 @@ export function generateCollectionGuides(collections: CollectionInfo[]): string[
     lines.push(`  ${col.name}`)
     lines.push(`    ${col.description || '-'}`)
     lines.push(`    使用方：${usedBy}`)
+    if (col.aclTag) {
+      lines.push(`    权限：${col.aclTag}`)
+    }
     if (col.indexes.length > 0) {
-      const idxList = col.indexes.map((i) => `\`${i.field}\``).join(', ')
+      const idxList = col.indexes.map((i) => {
+        const f = Array.isArray(i.field) ? i.field.join(',') : i.field
+        return `\`${f}\``
+      }).join(', ')
       lines.push(`    索引：${idxList}`)
     }
   }
 
   lines.push('')
-  lines.push('  推荐安全规则：')
-  lines.push('    auth.openid == doc._openid')
-  lines.push('    https://tcb.cloud.tencent.com/dev#/db')
+  lines.push('  ⚡ 执行 mp-skills setup --database 自动创建集合、索引和安全规则')
+  lines.push('  https://tcb.cloud.tencent.com/dev#/db')
 
   return lines
 }
 
 /**
- * 从 _shared 目录读取共享集合声明
+ * scanSharedCollections 已废弃 — 共享集合已合并到各 Skill 的 cloudbaserc.json 中
  */
-export function scanSharedCollections(projectPath: string): CollectionInfo[] {
-  const mpRoot = resolveMiniprogramRoot(projectPath)
-  const skillsParent = mpRoot || projectPath
-  const sharedPath = join(skillsParent, 'skills', '_shared', 'database', 'collections.json')
-  if (!existsSync(sharedPath)) return []
-
-  try {
-    const raw = JSON.parse(readFileSync(sharedPath, 'utf-8'))
-    const declarations: CollectionDeclaration[] = raw.collections || []
-    return declarations.map((decl) => ({
-      name: decl.name,
-      description: decl.description || '',
-      indexes: decl.indexes || [],
-      skills: ['_shared'],
-    }))
-  } catch {
-    return []
-  }
+export function scanSharedCollections(_projectPath: string): [] {
+  return []
 }

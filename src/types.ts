@@ -73,7 +73,9 @@ export interface SkillCloudbaserc {
     collections?: Array<{
       name: string
       description: string
-      indexes?: Array<{ field: string; unique?: boolean }>
+      indexes?: Array<{ field: string | string[]; unique?: boolean }>
+      aclTag?: string
+      aclRule?: Record<string, any>
     }>
   }
 }
@@ -87,26 +89,6 @@ export interface ProjectCloudbaserc {
   database?: {
     collections: Required<NonNullable<SkillCloudbaserc['database']>>['collections']
   }
-}
-
-// ── 数据库集合声明 ──
-
-export interface CollectionIndex {
-  name: string
-  field: string
-}
-
-export interface CollectionDeclaration {
-  name: string
-  description: string
-  indexes: CollectionIndex[]
-}
-
-export interface CollectionInfo {
-  name: string
-  description: string
-  indexes: CollectionIndex[]
-  skills: string[]
 }
 
 export interface RegistryRepo {

@@ -1,20 +1,23 @@
 // ── setup 命令 ──
 // 一站式环境搭建：聚合云函数 + 数据库集合 + 服务检查
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import CloudBase from '@cloudbase/manager-node'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
-import { mergeSkillCloudbaserc, writeProjectCloudbaserc } from '../lib/cloudbase-config.js'
+import { writeProjectCloudbaserc } from '../lib/cloudbase-config.js'
 import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
-import { scanCollections, scanSharedCollections, generateCollectionGuides } from '../lib/database-scanner.js'
+import { scanCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
-import type { DeployedState, CloudFunctionInfo } from '../types.js'
+import { ensureLogin } from '../lib/cloudbase.js'
+import type { DeployedState } from '../types.js'
 
 interface SetupOptions {
   cloudfunctions?: boolean
   database?: boolean
   services?: boolean
   dryRun?: boolean
+  envId?: string
 }
 
 export async function setupCommand(projectDir: string, opts: SetupOptions): Promise<void> {
@@ -31,7 +34,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
 
   if (runAll || opts.database) {
     const steps = runAll ? '2/3' : '1/1'
-    await setupDatabase(projectPath, opts.dryRun || false, steps)
+    await setupDatabase(projectPath, opts.dryRun || false, opts.envId, steps)
   }
 
   if (runAll || opts.services) {
@@ -72,18 +75,15 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   const aggregated = aggregateCloudFunctions(projectPath, funcs)
   if (aggregated.length > 0) {
     console.log(`  已聚合 ${aggregated.length} 个云函数到 ${cfDest}`)
-    // 确保 project.config.json 有 cloudfunctionRoot，IDE 才能识别
     if (ensureCloudfunctionRoot(projectPath)) {
       console.log(`  已添加 cloudfunctionRoot 配置`)
     }
   }
 
-  // 合并 Skill 级 cloudbaserc.json → 项目级 cloudbaserc.json
   const mergedPath = writeProjectCloudbaserc(projectPath)
   if (mergedPath) {
     console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
   } else if (funcs.length > 0) {
-    // 有云函数但 cloudbaserc 为空（理论上不会发生，兜底提示）
     console.log(`  ⚠️  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
   }
 
@@ -125,45 +125,122 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   console.log('')
 }
 
-async function setupDatabase(projectPath: string, dryRun: boolean, step: string): Promise<void> {
+async function setupDatabase(projectPath: string, dryRun: boolean, envId: string | undefined, step: string): Promise<void> {
   console.log(`[${step}] 数据库`)
   console.log('─'.repeat(40))
 
-  const collections = scanCollections(projectPath)
-  const shared = scanSharedCollections(projectPath)
+  const all = scanCollections(projectPath)
 
-  const all = new Map<string, (typeof collections)[0]>()
-  for (const c of collections) all.set(c.name, c)
-  for (const c of shared) {
-    if (!all.has(c.name)) all.set(c.name, { ...c, skills: [...c.skills] })
-  }
-
-  if (all.size === 0) {
+  if (all.length === 0) {
     console.log('  （未发现数据库集合声明）')
     console.log('')
     return
   }
 
-  const guides = generateCollectionGuides(Array.from(all.values()))
+  const guides = generateCollectionGuides(all)
   for (const line of guides) {
     console.log(`  ${line}`)
   }
 
   if (dryRun) {
-    console.log(`  [dry-run] 将创建 ${all.size} 个集合`)
+    console.log(`  [dry-run] 将创建 ${all.length} 个集合`)
     console.log('')
     return
   }
 
-  console.log(`  共 ${all.size} 个集合`)
-  console.log('')
-  console.log('  创建集合：')
-  console.log('    https://tcb.cloud.tencent.com/dev#/db')
-  console.log('')
-  console.log('  推荐安全规则：')
-  console.log('    auth.openid == doc._openid')
+  // ── 获取环境 ID ──
+  const targetEnvId = envId || readEnvIdFromProject(projectPath)
+  if (!targetEnvId) {
+    console.log('  ❌ 请通过 --env-id 参数指定云开发环境 ID')
+    console.log('     或先在项目根目录执行 tcb login 登录')
+    console.log('')
+    return
+  }
 
-  updateDeployedIfChanged(projectPath, { collections: Array.from(all.keys()) })
+  // ── 确保登录 ──
+  const cred = ensureLogin()
+  if (!cred) {
+    console.log('  ❌ 登录失败，请执行 tcb login 手动登录')
+    console.log('')
+    return
+  }
+
+  const app = CloudBase.init({
+    secretId: cred.tmpSecretId,
+    secretKey: cred.tmpSecretKey,
+    token: cred.tmpToken,
+    envId: targetEnvId,
+    region: 'ap-shanghai',
+  })
+
+  let created = 0
+  let errorCount = 0
+
+  for (const col of all) {
+    console.log(`  ${col.name}...`)
+
+    // 1. 创建集合
+    try {
+      await app.database.createCollectionIfNotExists(col.name)
+      created++
+      console.log(`    ✓ 集合已就绪`)
+    } catch (err) {
+      const msg = (err as Error).message || String(err)
+      if (msg.includes('already exists') || msg.includes('exist')) {
+        console.log(`    ✓ 集合已存在`)
+      } else {
+        console.log(`    ❌ 创建失败：${msg}`)
+        errorCount++
+        continue
+      }
+    }
+
+    // 2. 创建索引
+    if (col.indexes.length > 0) {
+      try {
+        const createIndexes = col.indexes.map((idx, i) => ({
+          IndexName: `idx_${Array.isArray(idx.field) ? idx.field.join('_') : idx.field}_${i}`,
+          MgoKeySchema: {
+            MgoIndexKeys: (Array.isArray(idx.field) ? idx.field : [idx.field]).map((f) => ({
+              Name: f,
+              Direction: '1',
+            })),
+            MgoIsUnique: idx.unique || false,
+          },
+        }))
+
+        await app.database.updateCollection(col.name, { CreateIndexes: createIndexes })
+        console.log(`    ✓ 索引已创建`)
+      } catch (err) {
+        const msg = (err as Error).message || String(err)
+        console.log(`    ⚠️  索引创建：${msg}`)
+      }
+    }
+
+    // 3. 安全规则
+    if (col.aclTag) {
+      try {
+        await app.permission.modifyResourcePermission({
+          resourceType: 'collection',
+          resource: col.name,
+          permission: col.aclTag as any,
+        })
+        console.log(`    ✓ 安全规则：${col.aclTag}`)
+      } catch (err) {
+        const msg = (err as Error).message || String(err)
+        console.log(`    ⚠️  安全规则配置：${msg}`)
+      }
+    }
+  }
+
+  console.log('')
+  if (errorCount > 0) {
+    console.log(`  ⚠️  ${errorCount} 个集合创建失败，请查看上面错误信息`)
+  } else {
+    console.log(`  ✅ 数据库初始化完成（${created}/${all.length}）`)
+  }
+
+  updateDeployedIfChanged(projectPath, { collections: all.map((c) => c.name) })
   console.log('')
 }
 
@@ -220,4 +297,22 @@ function updateDeployedIfChanged(
     services: patch.services || current.services,
   }
   updateDeployedState(projectPath, merged)
+}
+
+/**
+ * 从项目级 cloudbaserc.json 或 project.config.json 尝试读取环境 ID
+ */
+function readEnvIdFromProject(projectPath: string): string | null {
+  // 尝试项目级 cloudbaserc.json
+  const paths = [
+    resolve(projectPath, 'cloudbaserc.json'),
+    resolve(projectPath, 'miniprogram', 'cloudbaserc.json'),
+  ]
+  for (const p of paths) {
+    try {
+      const json = JSON.parse(readFileSync(p, 'utf-8'))
+      if (json.envId) return json.envId
+    } catch {}
+  }
+  return null
 }
