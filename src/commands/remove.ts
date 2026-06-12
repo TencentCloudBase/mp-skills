@@ -4,6 +4,7 @@
 import { existsSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { removeLockEntry } from '../lib/lock-file.js'
+import { resolveMiniprogramRoot } from '../lib/utils.js'
 
 interface RemoveOptions {
   all?: boolean
@@ -12,9 +13,13 @@ interface RemoveOptions {
 
 export async function removeCommand(name: string, opts: RemoveOptions): Promise<void> {
   const projectPath = resolve('.')
-  const mpRoot = resolveMpRoot(projectPath)
-  const skillsDir = join(projectPath, mpRoot, 'skills')
-  const appJsonPath = join(projectPath, mpRoot, 'app.json')
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  if (!mpRoot) {
+    console.log('未找到 app.json，无法移除 Skill')
+    return
+  }
+  const skillsDir = join(mpRoot, 'skills')
+  const appJsonPath = join(mpRoot, 'app.json')
 
   // ── 二次确认 ──
   if (!opts.yes) {
@@ -105,16 +110,5 @@ async function confirm(question: string): Promise<boolean> {
     return answer
   } catch {
     return true
-  }
-}
-
-function resolveMpRoot(projectPath: string): string {
-  const configPath = join(projectPath, 'project.config.json')
-  if (!existsSync(configPath)) return 'miniprogram'
-  try {
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
-  } catch {
-    return 'miniprogram'
   }
 }

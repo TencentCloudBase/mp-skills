@@ -10,7 +10,7 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
-import { spinner, warn } from './utils.js'
+import { spinner, warn, resolveMiniprogramRoot } from './utils.js'
 
 // 官方 skill 仓库
 export const SKILLS_REPO_URL = 'https://github.com/wechat-miniprogram/ai-mode-skills.git'
@@ -66,13 +66,14 @@ export async function ensureSkill(opts: EnsureSkillOptions): Promise<string | nu
 
 /** 在全局目录及额外基准目录中查找 skill 安装目录 */
 function findSkillDir(skillName: string, verifySubpath: string, extraBases: string[]): string | null {
-  const candidates: string[] = [
-    join(GLOBAL_SKILLS_DIR, skillName),
-    ...extraBases.flatMap((base) => [
-      join(base, 'skills', skillName),
-      join(base, 'miniprogram', 'skills', skillName),
-    ]),
-  ]
+  const candidates: string[] = [join(GLOBAL_SKILLS_DIR, skillName)]
+  for (const base of extraBases) {
+    // 兼容 base 直接是 mpRoot 的旧调用
+    candidates.push(join(base, 'skills', skillName))
+    // 通过 project.config.json 解析的 mpRoot（自动支持任意 miniprogramRoot 取值）
+    const mpRoot = resolveMiniprogramRoot(base)
+    if (mpRoot) candidates.push(join(mpRoot, 'skills', skillName))
+  }
   for (const dir of [...new Set(candidates)]) {
     if (existsSync(join(dir, verifySubpath))) return dir
   }

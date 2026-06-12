@@ -1,9 +1,9 @@
 // ── list 命令 ──
 // 列出已安装 Skill
 
-import { existsSync, readdirSync, readFileSync, Dirent } from 'node:fs'
+import { existsSync, readdirSync, Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { log } from '../lib/utils.js'
+import { resolveMiniprogramRoot } from '../lib/utils.js'
 
 interface ListOptions {
   remote?: boolean
@@ -12,12 +12,12 @@ interface ListOptions {
 
 export async function listCommand(opts: ListOptions): Promise<void> {
   const projectPath = resolve('.')
-  const mpRoot = resolveMpRoot(projectPath)
+  const mpRoot = resolveMiniprogramRoot(projectPath)
 
   if (!opts.remote || opts.all) {
-    const skillsDir = join(projectPath, mpRoot, 'skills')
     console.log('已安装的 Skill：')
-    if (existsSync(skillsDir)) {
+    const skillsDir = mpRoot ? join(mpRoot, 'skills') : null
+    if (skillsDir && existsSync(skillsDir)) {
       const entries = readdirSync(skillsDir, { withFileTypes: true }).filter(
         (e: Dirent) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'mcp.json')),
       )
@@ -36,16 +36,5 @@ export async function listCommand(opts: ListOptions): Promise<void> {
     console.log('')
     console.log('远程安装：')
     console.log('  npx mp-skills add TencentCloudBase/awesome-miniprogram-skills')
-  }
-}
-
-function resolveMpRoot(projectPath: string): string {
-  const configPath = join(projectPath, 'project.config.json')
-  if (!existsSync(configPath)) return 'miniprogram'
-  try {
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
-  } catch {
-    return 'miniprogram'
   }
 }

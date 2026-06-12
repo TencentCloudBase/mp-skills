@@ -7,7 +7,7 @@ import { parseSource } from '../lib/source-parser.js'
 import { cloneRepo, cleanupClone, listRemoteSkills } from '../lib/git.js'
 import { installSkill } from '../lib/installer.js'
 import { readLock, readDeployedState } from '../lib/lock-file.js'
-import { log, warn, ok, title } from '../lib/utils.js'
+import { log, warn, ok, title, resolveMiniprogramRoot } from '../lib/utils.js'
 import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
@@ -32,19 +32,10 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       return
     }
 
-    // 读取 miniprogramRoot，默认 miniprogram/
-    let miniprogramRoot = 'miniprogram'
-    try {
-      const config = JSON.parse(readFileSync(projectConfigPath, 'utf-8'))
-      if (config.miniprogramRoot) {
-        miniprogramRoot = config.miniprogramRoot.replace(/\/$/, '')
-      }
-    } catch {}
-
-    const appJsonPath = join(projectPath, miniprogramRoot, 'app.json')
-    if (!existsSync(appJsonPath)) {
-      warn(`未找到 ${miniprogramRoot}/app.json`)
-      log('请确认项目结构正确')
+    const mpRoot = resolveMiniprogramRoot(projectPath)
+    if (!mpRoot) {
+      warn('未找到 app.json')
+      log('请确认 project.config.json 的 miniprogramRoot 配置或项目结构')
       return
     }
 

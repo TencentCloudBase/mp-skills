@@ -2,14 +2,14 @@
 // 拷贝 Skill，注入 app.json / project.config.json，写入锁文件
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync } from 'node:fs'
-import { join, relative, dirname, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { hashDirectory } from './git.js'
 import { addLockEntry } from './lock-file.js'
+import { resolveMiniprogramRoot } from './utils.js'
 
 export interface InstallOptions {
   skillName?: string
   source?: string
-  miniprogramRoot?: string
 }
 
 /**
@@ -21,8 +21,16 @@ export function installSkill(
   opts: InstallOptions = {},
 ): { skillName: string; targetDir: string } {
   const skillName = opts.skillName || skillPath.split('/').pop() || 'unknown'
-  const mpRoot = opts.miniprogramRoot || resolveMiniprogramRoot(projectPath)
-  const targetDir = join(projectPath, mpRoot, 'skills', skillName)
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  if (!mpRoot) {
+    throw new Error(
+      '未找到 app.json，请确认 project.config.json 的 miniprogramRoot 配置或项目结构',
+    )
+  }
+
+  const relRoot = relative(projectPath, mpRoot) || '.'
+  const displayPrefix = relRoot === '.' ? 'skills' : `${relRoot}/skills`
+  const targetDir = join(mpRoot, 'skills', skillName)
 
   console.log(`\n* 安装 Skill: ${skillName}`)
 
@@ -34,27 +42,23 @@ export function installSkill(
     mkdirSync(targetDir, { recursive: true })
     cpSync(skillPath, targetDir, { recursive: true })
   }
-  console.log(`   * ${mpRoot}/skills/${skillName}/`)
+  console.log(`   * ${displayPrefix}/${skillName}/`)
 
-  // 1.5 安装共享代码（_shared/mp-skills-shared/）— 与 skill 在来源中同级的共享目录
+  // 1.5 安装共享代码
   const sourceSharedDir = resolve(skillPath, '..', '_shared', 'mp-skills-shared')
   if (existsSync(sourceSharedDir)) {
-    const sharedTarget = join(projectPath, mpRoot, 'skills', '_shared', 'mp-skills-shared')
+    const sharedTarget = join(mpRoot, 'skills', '_shared', 'mp-skills-shared')
     mkdirSync(sharedTarget, { recursive: true })
     cpSync(sourceSharedDir, sharedTarget, { recursive: true, force: true })
-    console.log(`   * ${mpRoot}/skills/_shared/mp-skills-shared/`)
+    console.log(`   * ${displayPrefix}/_shared/mp-skills-shared/`)
   }
 
-  // 2. 更新 app.json — 从 project.config.json 取 miniprogramRoot
-  const projectConfigPath = join(projectPath, 'project.config.json')
-  const appJsonPath = resolveAppJson(projectPath)
-  if (appJsonPath && existsSync(appJsonPath)) {
-    injectAppJson(appJsonPath, skillName, skillPath, projectPath)
-  } else {
-    console.log('   [WARN]  未找到 app.json（已检查 project.config.json 配置）')
-  }
+  // 2. 更新 app.json
+  const appJsonPath = join(mpRoot, 'app.json')
+  injectAppJson(appJsonPath, skillName, skillPath)
 
   // 3. 更新 project.config.json
+  const projectConfigPath = join(projectPath, 'project.config.json')
   if (existsSync(projectConfigPath)) {
     injectProjectConfig(projectConfigPath)
   }
@@ -92,7 +96,7 @@ export function showSetupHint(projectName?: string): void {
 /**
  * 注入 app.json
  */
-function injectAppJson(appJsonPath: string, skillName: string, skillPath: string, projectPath: string): void {
+function injectAppJson(appJsonPath: string, skillName: string, skillPath: string): void {
   const app = JSON.parse(readFileSync(appJsonPath, 'utf-8'))
 
   if (!app.lazyCodeLoading) app.lazyCodeLoading = 'requiredComponents'
@@ -157,28 +161,4 @@ function injectProjectConfig(configPath: string): void {
     config.packOptions.include.unshift({ type: 'folder', value: 'skills' })
   }
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n')
-}
-
-/**
- * 从 project.config.json 解析 app.json 路径
- */
-function resolveAppJson(projectPath: string): string | null {
-  const root = resolveMiniprogramRoot(projectPath)
-  if (!root) return null
-  return join(projectPath, root, 'app.json')
-}
-
-/**
- * 从 project.config.json 解析 miniprogramRoot
- * @returns miniprogram 目录名（不带尾部斜杠），默认 "miniprogram"
- */
-function resolveMiniprogramRoot(projectPath: string): string {
-  const configPath = join(projectPath, 'project.config.json')
-  if (!existsSync(configPath)) return 'miniprogram'
-  try {
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    return (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
-  } catch {
-    return 'miniprogram'
-  }
 }

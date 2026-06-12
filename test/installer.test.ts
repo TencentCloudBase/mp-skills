@@ -96,7 +96,7 @@ describe('缺少配置文件', () => {
     assert.ok(existsSync(join(proj, 'miniprogram', 'skills', 's')))
   })
 
-  it('无 app.json 时不报错', () => {
+  it('无 app.json 时抛出错误', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
     const proj = join(tmp, 'project')
     mkdirSync(join(proj, 'miniprogram'), { recursive: true })
@@ -104,8 +104,50 @@ describe('缺少配置文件', () => {
     const skill = join(tmp, 's')
     mkdirSync(join(skill, 'apis'), { recursive: true })
     writeFileSync(join(skill, 'mcp.json'), JSON.stringify({ apis: [] }))
-    // 不报错，只打印警告
-    installSkill(skill, proj, { skillName: 's' })
+    assert.throws(() => installSkill(skill, proj, { skillName: 's' }), /app\.json/)
+  })
+})
+
+function createRootLayoutFixture(opts: { miniprogramRoot?: string } = {}) {
+  const tmp = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
+  const proj = join(tmp, 'project')
+  mkdirSync(proj, { recursive: true })
+  // app.json 直接位于项目根
+  writeFileSync(join(proj, 'app.json'), JSON.stringify({ pages: ['pages/index/index'], window: {} }))
+  const config: Record<string, unknown> = { appid: 'test' }
+  if (opts.miniprogramRoot !== undefined) config.miniprogramRoot = opts.miniprogramRoot
+  writeFileSync(join(proj, 'project.config.json'), JSON.stringify(config))
+  const skill = join(tmp, 'my-skill')
+  mkdirSync(join(skill, 'apis'), { recursive: true })
+  writeFileSync(join(skill, 'mcp.json'), JSON.stringify({ apis: [{ name: 'hello', description: '打招呼' }] }))
+  return { proj, skill }
+}
+
+describe('项目根布局（miniprogramRoot 缺省 / "/"）', () => {
+  it('miniprogramRoot 字段缺失 → 安装到项目根 skills/', () => {
+    const { proj, skill } = createRootLayoutFixture()
+    installSkill(skill, proj, { skillName: 'my-skill' })
+    assert.ok(existsSync(join(proj, 'skills', 'my-skill', 'mcp.json')))
+    assert.ok(!existsSync(join(proj, 'miniprogram')))
+  })
+
+  it('miniprogramRoot 字段缺失 → 更新项目根 app.json', () => {
+    const { proj, skill } = createRootLayoutFixture()
+    installSkill(skill, proj, { skillName: 'my-skill' })
+    const app = JSON.parse(readFileSync(join(proj, 'app.json'), 'utf-8'))
+    assert.ok(app.agent?.skills?.some((s: any) => s.path === 'skills/my-skill'))
+  })
+
+  it('miniprogramRoot = "/" 等价于项目根', () => {
+    const { proj, skill } = createRootLayoutFixture({ miniprogramRoot: '/' })
+    installSkill(skill, proj, { skillName: 'my-skill' })
+    assert.ok(existsSync(join(proj, 'skills', 'my-skill', 'mcp.json')))
+  })
+
+  it('miniprogramRoot = "" 等价于项目根', () => {
+    const { proj, skill } = createRootLayoutFixture({ miniprogramRoot: '' })
+    installSkill(skill, proj, { skillName: 'my-skill' })
+    assert.ok(existsSync(join(proj, 'skills', 'my-skill', 'mcp.json')))
   })
 })
 

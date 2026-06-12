@@ -3,15 +3,15 @@
 // 支持交互式确认
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { log, ok, warn } from '../lib/utils.js'
+import { join, resolve, relative } from 'node:path'
+import { log, ok, warn, resolveMiniprogramRoot } from '../lib/utils.js'
 import { SKELETON } from '../lib/templates-data.js'
 import * as readline from 'node:readline'
 
 export async function createCommand(name?: string): Promise<void> {
   const projectPath = resolve('.')
 
-  // 读取 miniprogramRoot
+  // 检测项目
   const configPath = join(projectPath, 'project.config.json')
   if (!existsSync(configPath)) {
     warn('当前目录不是小程序项目（未找到 project.config.json）')
@@ -19,18 +19,13 @@ export async function createCommand(name?: string): Promise<void> {
     return
   }
 
-  let mpRoot = 'miniprogram'
-  try {
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    mpRoot = (config.miniprogramRoot || 'miniprogram').replace(/\/$/, '')
-  } catch {}
-
-  const appJsonPath = join(projectPath, mpRoot, 'app.json')
-  if (!existsSync(appJsonPath)) {
-    warn(`未找到 ${mpRoot}/app.json`)
-    log('请确认项目结构正确')
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  if (!mpRoot) {
+    warn('未找到 app.json')
+    log('请确认 project.config.json 的 miniprogramRoot 配置或项目结构')
     return
   }
+  const appJsonPath = join(mpRoot, 'app.json')
 
   // 获取 Skill 名称
   let skillName = name
@@ -42,7 +37,7 @@ export async function createCommand(name?: string): Promise<void> {
     return
   }
 
-  const skillsDir = join(projectPath, mpRoot, 'skills')
+  const skillsDir = join(mpRoot, 'skills')
   const targetDir = join(skillsDir, skillName)
 
   if (existsSync(targetDir)) {
@@ -59,7 +54,9 @@ export async function createCommand(name?: string): Promise<void> {
   }
 
   log(`\n* 已创建 Skill: ${skillName}`)
-  ok(`${mpRoot}/skills/${skillName}/`)
+  const relRoot = relative(projectPath, mpRoot) || '.'
+  const displayPrefix = relRoot === '.' ? 'skills' : `${relRoot}/skills`
+  ok(`${displayPrefix}/${skillName}/`)
   ok(`  cloudbaserc.json — 云资源声明（云函数配置 + 数据库集合）`)
   ok(`  mcp.json         — 定义 API 接口`)
   ok(`  SKILL.md         — 编排业务流程`)
