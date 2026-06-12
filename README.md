@@ -15,12 +15,12 @@
   </a>
 </p>
 
-让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。
+让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
 
 > [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
 
 ```bash
-npx mp-skills add awesome-miniprogram
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 ```
 
 ---
@@ -30,10 +30,10 @@ npx mp-skills add awesome-miniprogram
 ### 安装一个 Skill
 
 ```bash
-# 从注册表安装（自动拉取最新仓库列表）
-npx mp-skills add awesome-miniprogram
+# 交互式选择并安装 Skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
-# 从 GitHub 仓库安装指定 Skill
+# 安装指定 Skill
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
 
 # 安装仓库中所有 Skill

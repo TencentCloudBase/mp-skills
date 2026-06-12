@@ -15,7 +15,7 @@ function tmpProject(): string {
 describe('readLock', () => {
   it('无锁文件返回空列表', () => {
     const lock = readLock(tmpProject())
-    assert.equal(lock.version, 1)
+    assert.equal(lock.version, 2)
     assert.deepEqual(lock.skills, [])
   })
 
