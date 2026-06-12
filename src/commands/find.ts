@@ -3,7 +3,7 @@
 // 参考 vercel-labs/skills 的 find.ts 实现
 
 import * as readline from 'readline'
-import { listRemoteSkills } from '../lib/git.js'
+import { listRemoteSkills, fetchRemoteFile } from '../lib/git.js'
 import pc from 'picocolors'
 
 // ── ANSI 常量 ──
@@ -19,6 +19,21 @@ const SEARCH_REPOS = ['TencentCloudBase/awesome-miniprogram-skills']
 interface SkillEntry {
   name: string
   repo: string
+  description: string
+}
+
+interface RemoteSource {
+  type: 'github'
+  original: string
+  repoName: string
+  ref: string
+}
+
+const DEFAULT_SOURCE: RemoteSource = {
+  type: 'github',
+  original: SEARCH_REPOS[0]!,
+  repoName: SEARCH_REPOS[0]!,
+  ref: 'main',
 }
 
 // ── 数据源 ──
@@ -34,7 +49,7 @@ async function fetchAllSkills(): Promise<SkillEntry[]> {
         ref: 'main',
       })
       for (const s of skills) {
-        results.push({ name: s.name, repo })
+        results.push({ name: s.name, repo, description: '' })
       }
     } catch {
       // 单个仓库失败继续
@@ -45,9 +60,39 @@ async function fetchAllSkills(): Promise<SkillEntry[]> {
   return results
 }
 
+/**
+ * 并行预取所有 Skill 的 mcp.json，提取 description。
+ * mcp.json 中顶层有 description 字段，优先取它；
+ * 否则取第一个 apis[].description 的第一行作为摘要。
+ */
+async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
+  const fetchOne = async (skill: SkillEntry) => {
+    const source: RemoteSource = { ...DEFAULT_SOURCE, repoName: skill.repo }
+    const content = await fetchRemoteFile(source, `skills/${skill.name}/mcp.json`)
+    if (!content) return
+    try {
+      const mcp = JSON.parse(content)
+      // 取 mcp 顶层 description 或首个 API 的描述第一行，限制 80 字
+      let desc = (mcp.description || '').split('\n')[0].trim()
+      if (!desc && Array.isArray(mcp.apis) && mcp.apis[0]?.description) {
+        desc = mcp.apis[0].description.split('\n')[0].trim()
+      }
+      if (desc.length > 80) desc = desc.slice(0, 80) + '...'
+      skill.description = desc
+    } catch {
+      // ignore
+    }
+  }
+
+  await Promise.all(skills.map(fetchOne))
+}
+
 function matchSkill(skill: SkillEntry, query: string): boolean {
   const q = query.toLowerCase()
-  return skill.name.toLowerCase().includes(q) || skill.repo.toLowerCase().includes(q)
+  return (
+    skill.name.toLowerCase().includes(q) ||
+    skill.description.toLowerCase().includes(q)
+  )
 }
 
 // ── 非交互模式（有关键词或非 TTY） ──
@@ -57,10 +102,12 @@ async function staticSearch(keyword: string): Promise<void> {
   console.log('')
 
   const allSkills = await fetchAllSkills()
+  await fetchDescriptions(allSkills)
+
   const filtered = allSkills.filter((s) => matchSkill(s, keyword))
   const keywordLower = keyword.toLowerCase()
 
-  // 对匹配度排序：name 完全匹配 > name 包含 > repo 包含
+  // 对匹配度排序：name 完全匹配 > name 包含 > desc 包含
   filtered.sort((a, b) => {
     const aName = a.name.toLowerCase()
     const bName = b.name.toLowerCase()
@@ -80,7 +127,9 @@ async function staticSearch(keyword: string): Promise<void> {
 
   for (const r of filtered) {
     console.log(`  ${pc.bold(r.name)}`)
-    console.log(`    ${pc.dim('来源：')}${r.repo}`)
+    if (r.description) {
+      console.log(`    ${pc.dim(r.description)}`)
+    }
     console.log(`    ${pc.dim('安装：')}mp-skills add ${r.repo} --skill ${r.name}`)
     console.log('')
   }
@@ -100,13 +149,18 @@ async function interactiveSearch(): Promise<void> {
   } catch {
     allSkills = []
   }
-  spinner.stop()
 
   if (allSkills.length === 0) {
+    spinner.stop()
     console.log(`  ${pc.dim('（未能获取 Skill 列表，请检查网络连接）')}`)
     console.log('')
     return
   }
+
+  // 并行预取描述
+  spinner.update('正在获取 Skill 描述...')
+  await fetchDescriptions(allSkills)
+  spinner.stop()
 
   const selected = await runSearchPrompt(allSkills)
 
@@ -118,7 +172,9 @@ async function interactiveSearch(): Promise<void> {
 
   console.log('')
   console.log(`  ${pc.bold(selected.name)}`)
-  console.log(`  ${pc.dim('来源：')}${selected.repo}`)
+  if (selected.description) {
+    console.log(`  ${pc.dim(selected.description)}`)
+  }
   console.log('')
   console.log(`  ${pc.dim('安装命令：')}`)
   console.log(`  ${pc.cyan(`mp-skills add ${selected.repo} --skill ${selected.name}`)}`)
@@ -157,7 +213,7 @@ async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | nu
     if (results.length === 0) {
       lines.push(`  ${pc.dim('（无匹配结果）')}`)
     } else {
-      const maxVisible = 10
+      const maxVisible = 8
       const visible = results.slice(0, maxVisible)
 
       for (let i = 0; i < visible.length; i++) {
@@ -165,9 +221,13 @@ async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | nu
         const isSelected = i === selectedIndex
         const arrow = isSelected ? pc.cyan('>') : ' '
         const name = isSelected ? pc.bold(pc.cyan(skill.name)) : pc.white(skill.name)
-        const repo = pc.dim(`  ${skill.repo}`)
 
-        lines.push(`  ${arrow} ${name}${repo}`)
+        lines.push(`  ${arrow} ${name}`)
+        // 描述行
+        if (skill.description) {
+          const descColor = isSelected ? pc.cyan : pc.dim
+          lines.push(`    ${descColor(skill.description)}`)
+        }
       }
     }
 
@@ -266,12 +326,16 @@ function createInlineSpinner() {
         process.stdout.write(`\r  ${pc.dim(frames[i++ % frames.length]! + ' ' + text)}`)
       }, 80)
     },
+    update(text: string): void {
+      if (timer) {
+        process.stdout.write(`\r  ${pc.dim(frames[i++ % frames.length]! + ' ' + text)}`)
+      }
+    },
     stop(): void {
       if (timer) {
         clearInterval(timer)
         timer = null
       }
-      // 清除当前行
       process.stdout.write('\r' + ' '.repeat(60) + '\r')
     },
   }
