@@ -4,34 +4,33 @@
   "description": "CLI for adding AI Skills to WeChat Mini Programs via wx.modelContext",
   "type": "module",
   "bin": {
-    "mp-skills": "./bin/mp-skills.mjs"
+    "mp-skills": "./dist/cli.cjs"
   },
   "files": [
-    "bin/",
-    "dist/",
+    "dist/cli.cjs",
     "templates/",
-    "references/"
+    "README.md"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "node bin/mp-skills.mjs",
+    "build": "node scripts/build.mjs",
+    "dev": "node dist/cli.cjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
     "test": "tsx --test test/*.test.ts",
-    "prepublishOnly": "npm run build"
+    "prepack": "npm run build"
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "@cloudbase/cli": "^3.5.6",
     "@cloudbase/manager-node": "^5.5.3",
     "cli-table3": "^0.6.5",
     "commander": "^12.0.0",
     "enquirer": "^2.4.1",
+    "esbuild": "^0.28.1",
     "nanospinner": "^1.2.2",
     "opencode-ai": "^1.17.3",
-    "picocolors": "^1.1.1"
-  },
-  "devDependencies": {
+    "picocolors": "^1.1.1",
     "@types/node": "^22.0.0",
     "prettier": "^3.8.4",
     "tsx": "^4.22.4",
@@ -45,5 +44,9 @@
     "skills"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TencentCloudBase/mp-skills.git"
+  },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

@@ -1,0 +1,80 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Bump version & push tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version ${{ inputs.bump }} -m "v%s"
+          git push
+          git push --tags
+
+      # Trusted Publishers: OIDC handles auth, no NPM_TOKEN needed
+      # Config: npmjs.com → package → Settings → Publishing access → Trusted Publisher
+      # Add: GitHub repo = TencentCloudBase/mp-skills, workflow = .github/workflows/publish.yml
+      - name: Publish to npm
+        id: publish
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        if: steps.publish.outcome == 'success'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          LATEST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # Collect merged PRs since last tag
+          if [ -z "$LATEST_TAG" ]; then
+            PRS=$(gh pr list --state merged --json number,title --limit 50)
+          else
+            SINCE=$(git log -1 --format=%cI "${LATEST_TAG}")
+            PRS=$(gh pr list --state merged --search "merged:>=${SINCE}" --json number,title --limit 50)
+          fi
+
+          CHANGELOG=$(echo "$PRS" | jq -r '.[] | "- \(.title) (#\(.number))"')
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="No PRs found in this release."
+          fi
+
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes "${CHANGELOG}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
