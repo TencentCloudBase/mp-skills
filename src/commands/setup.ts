@@ -4,7 +4,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
-import { resolveCloudfunctionRoot } from '../lib/utils.js'
+import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
 import { scanCollections, scanSharedCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
 import type { DeployedState, CloudFunctionInfo } from '../types.js'
@@ -71,6 +71,10 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   const aggregated = aggregateCloudFunctions(projectPath, funcs)
   if (aggregated.length > 0) {
     console.log(`  已聚合 ${aggregated.length} 个云函数到 ${cfDest}`)
+    // 确保 project.config.json 有 cloudfunctionRoot，IDE 才能识别
+    if (ensureCloudfunctionRoot(projectPath)) {
+      console.log(`  已添加 cloudfunctionRoot 配置`)
+    }
   }
 
   const events = funcs.filter((f) => f.type === 'event')

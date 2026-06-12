@@ -1,6 +1,6 @@
 // ── 工具函数 ──
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { createSpinner } from 'nanospinner'
 import pc from 'picocolors'
@@ -126,4 +126,28 @@ export function resolveCloudfunctionRoot(projectPath: string): string | null {
     // 解析失败按缺失处理
   }
   return null
+}
+
+/**
+ * 确保 project.config.json 中设置了 cloudfunctionRoot。
+ * 如果已存在则保留原值，没有则写入默认值 "cloudfunctions/"。
+ * 返回 true 表示写入过（新增），false 表示已存在无需写入。
+ */
+export function ensureCloudfunctionRoot(
+  projectPath: string,
+  defaultValue: string = 'cloudfunctions/',
+): boolean {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return false
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf8'))
+    if (config.cloudfunctionRoot) {
+      return false // 已有配置，不覆盖
+    }
+    config.cloudfunctionRoot = defaultValue
+    writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n')
+    return true
+  } catch {
+    return false
+  }
 }
