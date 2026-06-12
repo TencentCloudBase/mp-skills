@@ -5,12 +5,14 @@
 import { existsSync, readFileSync, readdirSync, type Dirent } from 'node:fs'
 import { join } from 'node:path'
 import type { CollectionInfo, CollectionDeclaration } from '../types.js'
+import { resolveMiniprogramRoot } from './utils.js'
 
 /**
  * 扫描并合并所有 Skill 的数据库集合声明
  */
 export function scanCollections(projectPath: string): CollectionInfo[] {
-  const skillsDir = join(projectPath, 'skills')
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  const skillsDir = mpRoot ? join(mpRoot, 'skills') : join(projectPath, 'skills')
   if (!existsSync(skillsDir)) return []
 
   const skillDirs = readdirSync(skillsDir, { withFileTypes: true }).filter(
@@ -91,7 +93,9 @@ export function generateCollectionGuides(collections: CollectionInfo[]): string[
  * 从 _shared 目录读取共享集合声明
  */
 export function scanSharedCollections(projectPath: string): CollectionInfo[] {
-  const sharedPath = join(projectPath, 'skills', '_shared', 'database', 'collections.json')
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  const skillsParent = mpRoot || projectPath
+  const sharedPath = join(skillsParent, 'skills', '_shared', 'database', 'collections.json')
   if (!existsSync(sharedPath)) return []
 
   try {
