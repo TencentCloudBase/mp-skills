@@ -83,7 +83,13 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   if (events.length > 0) {
     console.log('')
     console.log(`  Event 云函数（${events.length} 个）：`)
-    console.log('    方式一：微信开发者工具右键 → 上传并部署')
+    console.log(`    目录：${cfDest}`)
+    for (const f of events) {
+      console.log(`      ${f.name}/`)
+    }
+    console.log('')
+    console.log('    方式一：微信开发者工具')
+    console.log(`            在 ${cfDest} 目录下右键 → 创建并部署（云端安装依赖）`)
     console.log('    方式二：CloudBase CLI：')
     for (const f of events) {
       console.log(`      tcb fn deploy ${f.name} --yes`)
