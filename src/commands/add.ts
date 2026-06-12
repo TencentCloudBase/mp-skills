@@ -176,7 +176,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         description: descMap.get(s.name) || '',
       }))
 
-      const selected = await fuzzySelect(selectItems)
+      const selected = await fuzzySelect(selectItems, { multiSelect: true })
       if (!selected) return
 
       // 处理多选结果

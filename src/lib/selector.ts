@@ -20,12 +20,17 @@ export interface SelectItem {
   description?: string
 }
 
+export interface SelectOptions {
+  multiSelect?: boolean
+}
+
 /**
- * fzf 风格交互选择器（支持多选）
+ * fzf 风格交互选择器
  * @param items 选项列表（含 label + description）
- * @returns 选中 value 的逗号分隔字符串，取消返回 null
+ * @param options.multiSelect 是否允许多选（默认 false，回车直接选中当前项）
+ * @returns 选中 value，取消返回 null。多选时返回逗号分隔字符串
  */
-export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
+export async function fuzzySelect(items: SelectItem[], options?: SelectOptions): Promise<string | null> {
   if (!process.stdin.isTTY || items.length === 0) {
     return items[0]?.value || null
   }
@@ -38,6 +43,7 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
   let cursor = 0
   let renderedLines = 0
   const selectedSet = new Set<string>()
+  const multiSelect = options?.multiSelect ?? false
 
   process.stdout.write(HIDE_CURSOR)
 
@@ -81,8 +87,12 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
     }
 
     const selCount = selectedSet.size
-    lines.push('')
-    lines.push(`  ${DIM}type to filter | space toggle | enter (${selCount} selected) | esc cancel${RESET}`)
+
+    if (multiSelect) {
+      lines.push(`  ${DIM}type to filter | space toggle | enter confirm (${selCount} selected) | esc cancel${RESET}`)
+    } else {
+      lines.push(`  ${DIM}type to filter | ↑↓ navigate | enter select | esc cancel${RESET}`)
+    }
 
     for (const line of lines) {
       process.stdout.write(line + '\n')
@@ -114,16 +124,21 @@ export async function fuzzySelect(items: SelectItem[]): Promise<string | null> {
       if (key.name === 'return') {
         cleanup()
         const filtered = getFiltered()
-        const selected = [...selectedSet]
-        if (selected.length === 0 && filtered[cursor]) {
-          // 未选择时，回车选中当前项
-          selected.push(filtered[cursor].value)
+        if (multiSelect) {
+          const selected = [...selectedSet]
+          if (selected.length === 0 && filtered[cursor]) {
+            selected.push(filtered[cursor].value)
+          }
+          resolve(selected.length > 0 ? selected.join(',') : null)
+        } else {
+          const current = filtered[cursor]
+          resolve(current ? current.value : null)
         }
-        resolve(selected.length > 0 ? selected.join(',') : null)
         return
       }
 
       if (key.name === 'space') {
+        if (!multiSelect) return
         const filtered = getFiltered()
         const current = filtered[cursor]
         if (current) {

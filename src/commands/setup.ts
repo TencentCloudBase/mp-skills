@@ -374,6 +374,6 @@ async function interactiveEnvSelect(projectPath: string): Promise<string | null>
     return null
   }
 
-  const selected = await fuzzySelect(items)
-  return selected && selected.includes(',') ? selected.split(',')[0] : selected || null
+  const selected = await fuzzySelect(items, { multiSelect: false })
+  return selected || null
 }
