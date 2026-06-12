@@ -306,9 +306,8 @@ async function setupCloudbase(opts?: { defaultModel?: string }): Promise<LlmCred
   const apiKey = await resolveCloudbaseApiKey(cred, env.envId)
 
   const baseUrl = buildGatewayBaseUrl(env.envId, model)
-  const modelField = `${model.group}/${model.model}`
-  ok(`已配置 CloudBase 网关：${modelField}`)
-  return { baseUrl, apiKey, model: modelField }
+  ok(`已配置 CloudBase 网关：${model.group} · 模型：${model.model}`)
+  return { baseUrl, apiKey, model: model.model }
 }
 
 /** 选已有 API Key（取明文）或新建一个 */

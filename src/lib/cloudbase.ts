@@ -241,5 +241,5 @@ export async function getApiKeyPlaintext(
 
 /** 组装 CloudBase AI 网关的 OpenAI 兼容 baseURL */
 export function buildGatewayBaseUrl(envId: string, model: CloudbaseModel): string {
-  return `https://${envId}.api.tcloudbasegateway.com/v1/ai/${model.group}/${model.model}/v1`
+  return `https://${envId}.api.tcloudbasegateway.com/v1/ai/${model.group}`
 }
