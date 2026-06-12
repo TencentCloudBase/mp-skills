@@ -6,6 +6,7 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
 import { log, ok, warn } from '../lib/utils.js'
+import { showSetupHint } from '../lib/installer.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = join(__dirname, '..', '..', 'templates')
@@ -45,4 +46,5 @@ export async function newCommand(name: string): Promise<void> {
   log(`   mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill`)
   log(`   或查看 docs/SKILL-DEV-GUIDE.md`)
   log(`   或使用微信开发者工具打开本项目`)
+  showSetupHint()
 }
