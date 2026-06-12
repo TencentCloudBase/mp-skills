@@ -130,7 +130,7 @@ function resolveEnvVars(value: string): string {
   return value.replace(/\{\{env\.(\w+)\}\}/g, (_, name) => {
     const envVal = process.env[name]
     if (envVal) return envVal
-    console.warn(`  ⚠️  环境变量 ${name} 未设置，保留插值 {{env.${name}}}，tcb CLI 可运行时解析`)
+    console.warn(`  [WARN]  环境变量 ${name} 未设置，保留插值 {{env.${name}}}，tcb CLI 可运行时解析`)
     return `{{env.${name}}}`
   })
 }

@@ -24,17 +24,17 @@ export function installSkill(
   const mpRoot = opts.miniprogramRoot || resolveMiniprogramRoot(projectPath)
   const targetDir = join(projectPath, mpRoot, 'skills', skillName)
 
-  console.log(`\n📦 安装 Skill: ${skillName}`)
+  console.log(`\n* 安装 Skill: ${skillName}`)
 
   // 1. 拷贝
   if (existsSync(targetDir)) {
-    console.log(`   ⚠️  ${skillName} 已存在，覆盖`)
+    console.log(`   [WARN]  ${skillName} 已存在，覆盖`)
     cpSync(skillPath, targetDir, { recursive: true, force: true })
   } else {
     mkdirSync(targetDir, { recursive: true })
     cpSync(skillPath, targetDir, { recursive: true })
   }
-  console.log(`   ✓ ${mpRoot}/skills/${skillName}/`)
+  console.log(`   * ${mpRoot}/skills/${skillName}/`)
 
   // 1.5 安装共享代码（_shared/mp-skills-shared/）— 与 skill 在来源中同级的共享目录
   const sourceSharedDir = resolve(skillPath, '..', '_shared', 'mp-skills-shared')
@@ -42,7 +42,7 @@ export function installSkill(
     const sharedTarget = join(projectPath, mpRoot, 'skills', '_shared', 'mp-skills-shared')
     mkdirSync(sharedTarget, { recursive: true })
     cpSync(sourceSharedDir, sharedTarget, { recursive: true, force: true })
-    console.log(`   ✓ ${mpRoot}/skills/_shared/mp-skills-shared/`)
+    console.log(`   * ${mpRoot}/skills/_shared/mp-skills-shared/`)
   }
 
   // 2. 更新 app.json — 从 project.config.json 取 miniprogramRoot
@@ -51,7 +51,7 @@ export function installSkill(
   if (appJsonPath && existsSync(appJsonPath)) {
     injectAppJson(appJsonPath, skillName, skillPath, projectPath)
   } else {
-    console.log('   ⚠️  未找到 app.json（已检查 project.config.json 配置）')
+    console.log('   [WARN]  未找到 app.json（已检查 project.config.json 配置）')
   }
 
   // 3. 更新 project.config.json
@@ -66,7 +66,7 @@ export function installSkill(
     hash: hashDirectory(targetDir),
   })
 
-  console.log('   ✓ 已记录版本')
+  console.log('   * 已记录版本')
   _setupHintShown = false  // 重置标记，让下次 install 重新提示
   return { skillName, targetDir }
 }
@@ -81,7 +81,7 @@ export function showSetupHint(): void {
   _setupHintShown = true
   console.log('')
   console.log('  ═══════════════════════════════════════════')
-  console.log('  ⚡ 下一步：执行 mp-skills setup')
+  console.log('  * 下一步：执行 mp-skills setup')
   console.log('     聚合云函数、生成项目级 cloudbaserc.json、初始化数据库')
   console.log('  ═══════════════════════════════════════════')
 }

@@ -80,7 +80,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
           trackCommand({ command: 'add:install', detail: `local:${entry.name}` }).catch(() => {})
           count++
         }
-        log(`\n✅ 已安装 ${count} 个 Skill`)
+        log(`\n[OK] 已安装 ${count} 个 Skill`)
         trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
         promptSetupIfNeeded(projectPath)
       } else {
@@ -91,7 +91,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
           source: sourceInfo.original,
         })
       }
-      log(`\n✅ 已完成！`)
+      log(`\n[OK] 已完成！`)
       trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
       promptSetupIfNeeded(projectPath)
       return
@@ -123,7 +123,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         source: sourceInfo.repoName || sourceInfo.repoUrl,
       })
       cleanupClone(tmpDir)
-      log(`\n✅ 安装完成！`)
+      log(`\n[OK] 安装完成！`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${opts.skill}` }).catch(() => {})
       promptSetupIfNeeded(projectPath)
       return
@@ -145,7 +145,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         }
       }
       cleanupClone(tmpDir)
-      log(`\n✅ 已安装 ${count} 个 Skill`)
+      log(`\n[OK] 已安装 ${count} 个 Skill`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:all(${count})` }).catch(() => {})
       promptSetupIfNeeded(projectPath)
       return
@@ -191,7 +191,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         })
       }
       cleanupClone(tmpDir)
-      log(`\n✅ 已安装 ${selectedNames.length} 个 Skill`)
+      log(`\n[OK] 已安装 ${selectedNames.length} 个 Skill`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${selected}` }).catch(() => {})
       promptSetupIfNeeded(projectPath)
     } else {
@@ -204,7 +204,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       log(`全部: mp-skills add ${source} --all`)
     }
   } catch (err) {
-    console.error(`❌ ${(err as Error).message}`)
+    console.error(`[ERR] ${(err as Error).message}`)
     process.exit(1)
   }
 }

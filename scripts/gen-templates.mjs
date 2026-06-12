@@ -51,4 +51,4 @@ ${sections.join('\n\n')}
 `
 
 writeFileSync(join(ROOT, 'src', 'lib', 'templates-data.ts'), output, 'utf-8')
-console.log('✅ Generated src/lib/templates-data.ts')
+console.log('* Generated src/lib/templates-data.ts')

@@ -9,7 +9,7 @@ export function sanitizeGitUrl(url: string): string {
   // 只允许 URL 安全字符：字母数字 . : / - _ @ ~ % # +
   const safe = url.replace(/[^a-zA-Z0-9.:\/\-_@~%#+]/g, '')
   if (safe !== url) {
-    console.warn('  ⚠️  URL 包含不安全字符，已自动清理')
+    console.warn('  [WARN]  URL 包含不安全字符，已自动清理')
   }
   return safe
 }
@@ -21,7 +21,7 @@ export function sanitizeGitUrl(url: string): string {
 export function sanitizeRef(ref: string): string {
   const safe = ref.replace(/[^a-zA-Z0-9.\/\-_]/g, '')
   if (safe !== ref) {
-    console.warn('  ⚠️  引用名包含不安全字符，已自动清理')
+    console.warn('  [WARN]  引用名包含不安全字符，已自动清理')
   }
   return safe || 'main'
 }

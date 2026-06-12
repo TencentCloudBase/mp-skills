@@ -71,4 +71,4 @@ var __import_meta_url__ = "file://" + __filename;`,
   treeShaking: true,
 });
 
-console.log('✅ dist/cli.cjs bundled (zero-dependency)');
+console.log('* dist/cli.cjs bundled (zero-dependency)');

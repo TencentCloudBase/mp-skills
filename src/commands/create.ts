@@ -58,7 +58,7 @@ export async function createCommand(name?: string): Promise<void> {
     writeFileSync(fullPath, content, 'utf-8')
   }
 
-  log(`\n📦 已创建 Skill: ${skillName}`)
+  log(`\n* 已创建 Skill: ${skillName}`)
   ok(`${mpRoot}/skills/${skillName}/`)
   ok(`  cloudbaserc.json — 云资源声明（云函数配置 + 数据库集合）`)
   ok(`  mcp.json         — 定义 API 接口`)

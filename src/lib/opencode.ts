@@ -241,7 +241,7 @@ function printEvent(evt: unknown): boolean {
     case 'step_finish': {
       if (e.part?.reason === 'stop') {
         const total = e.part?.tokens?.total
-        if (typeof total === 'number') log(colors.green(`  ✓ 完成一步（累计 tokens: ${total}）`))
+        if (typeof total === 'number') log(colors.green(`  * 完成一步（累计 tokens: ${total}）`))
       }
       break
     }

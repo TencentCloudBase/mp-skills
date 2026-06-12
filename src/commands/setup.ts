@@ -35,7 +35,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
     targetEnvId = await interactiveEnvSelect(projectPath)
   }
   if (!targetEnvId) {
-    console.log('  ❌ 未选择云开发环境')
+    console.log('  [ERR] 未选择云开发环境')
     console.log('     可通过 --env-id 参数指定，或设置 ENV_ID 环境变量')
     console.log('')
     return
@@ -130,7 +130,7 @@ async function setupCloudFunctions(projectPath: string, envId: string, dryRun: b
   if (mergedPath) {
     console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
   } else if (toAggregate.length > 0) {
-    console.log(`  ⚠️  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
+    console.log(`  [WARN]  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
   }
 
   const events = toAggregate.filter((f) => f.type === 'event')
@@ -197,7 +197,7 @@ async function setupDatabase(projectPath: string, envId: string, dryRun: boolean
   // ── 确保登录 ──
   const cred = ensureLogin()
   if (!cred) {
-    console.log('  ❌ 登录失败，请执行 tcb login 手动登录')
+    console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
     console.log('')
     return
   }
@@ -246,13 +246,13 @@ async function setupDatabase(projectPath: string, envId: string, dryRun: boolean
     try {
       await app.database.createCollectionIfNotExists(col.name)
       created++
-      console.log(`    ✓ 集合已就绪`)
+      console.log(`    * 集合已就绪`)
     } catch (err) {
       const msg = (err as Error).message || String(err)
       if (msg.includes('already exists') || msg.includes('exist')) {
-        console.log(`    ✓ 集合已存在`)
+        console.log(`    * 集合已存在`)
       } else {
-        console.log(`    ❌ 创建失败：${msg}`)
+        console.log(`    [ERR] 创建失败：${msg}`)
         errorCount++
         continue
       }
@@ -273,10 +273,10 @@ async function setupDatabase(projectPath: string, envId: string, dryRun: boolean
         }))
 
         await app.database.updateCollection(col.name, { CreateIndexes: createIndexes })
-        console.log(`    ✓ 索引已创建`)
+        console.log(`    * 索引已创建`)
       } catch (err) {
         const msg = (err as Error).message || String(err)
-        console.log(`    ⚠️  索引创建：${msg}`)
+        console.log(`    [WARN]  索引创建：${msg}`)
       }
     }
 
@@ -288,19 +288,19 @@ async function setupDatabase(projectPath: string, envId: string, dryRun: boolean
           resource: col.name,
           permission: col.aclTag as any,
         })
-        console.log(`    ✓ 安全规则：${col.aclTag}`)
+        console.log(`    * 安全规则：${col.aclTag}`)
       } catch (err) {
         const msg = (err as Error).message || String(err)
-        console.log(`    ⚠️  安全规则配置：${msg}`)
+        console.log(`    [WARN]  安全规则配置：${msg}`)
       }
     }
   }
 
   console.log('')
   if (errorCount > 0) {
-    console.log(`  ⚠️  ${errorCount} 个集合创建失败，请查看上面错误信息`)
+    console.log(`  [WARN]  ${errorCount} 个集合创建失败，请查看上面错误信息`)
   } else {
-    console.log(`  ✅ 数据库初始化完成（${created}/${toCreate.length}）`)
+    console.log(`  [OK] 数据库初始化完成（${created}/${toCreate.length}）`)
   }
 
   updateDeployedIfChanged(projectPath, { collections: all.map((c) => c.name) })
@@ -378,7 +378,7 @@ function readEnvIdFromProject(projectPath: string): string | null {
         // 解析 {{env.XXX}} 插值
         const resolved = String(json.envId).replace(/\{\{env\.(\w+)\}\}/g, (_, name) => process.env[name] || `{{env.${name}}}`)
         if (resolved !== json.envId && resolved.includes('{{env.')) {
-          console.warn('  ⚠️  环境变量 ENV_ID 未设置，保留插值。可通过 --env-id 参数指定')
+          console.warn('  [WARN]  环境变量 ENV_ID 未设置，保留插值。可通过 --env-id 参数指定')
         }
         return resolved
       }
@@ -395,17 +395,17 @@ async function interactiveEnvSelect(projectPath: string): Promise<string | null>
   // 确保登录
   const cred = ensureLogin()
   if (!cred) {
-    console.log('  ❌ 登录失败，请执行 tcb login 手动登录')
+    console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
     return null
   }
 
-  console.log('  🔍 获取环境列表...')
+  console.log('   获取环境列表...')
 
   let raw: string
   try {
     raw = execSync('tcb env list --json', { encoding: 'utf-8', timeout: 15000 })
   } catch {
-    console.log('  ❌ 获取环境列表失败，请通过 --env-id 参数指定')
+    console.log('  [ERR] 获取环境列表失败，请通过 --env-id 参数指定')
     return null
   }
 
@@ -413,7 +413,7 @@ async function interactiveEnvSelect(projectPath: string): Promise<string | null>
   try {
     data = JSON.parse(raw).data || []
   } catch {
-    console.log('  ❌ 解析环境列表失败')
+    console.log('  [ERR] 解析环境列表失败')
     return null
   }
 
@@ -426,7 +426,7 @@ async function interactiveEnvSelect(projectPath: string): Promise<string | null>
     }))
 
   if (items.length === 0) {
-    console.log('  ❌ 未找到可用的云开发环境')
+    console.log('  [ERR] 未找到可用的云开发环境')
     return null
   }
 

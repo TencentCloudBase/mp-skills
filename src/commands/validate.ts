@@ -44,7 +44,7 @@ export async function validateCommand(projectDir: string): Promise<void> {
   }
 
   // 运行校验
-  log(`🔍 校验项目: ${projectPath}`)
+  log(` 校验项目: ${projectPath}`)
 
   try {
     const result = spawnSync(process.execPath, [validateScript, projectPath], {
@@ -62,7 +62,7 @@ export async function validateCommand(projectDir: string): Promise<void> {
       process.exit(result.status || 1)
     }
 
-    ok('✅ 校验通过')
+    ok('[OK] 校验通过')
   } catch (err) {
     warn(`校验异常: ${(err as Error).message}`)
     process.exit(1)

@@ -219,7 +219,7 @@ async function runNonInteractive(
     process.exit(exitCode || 1)
   }
 
-  title('✅ Skill 生成完成')
+  title('[OK] Skill 生成完成')
   kv('输出目录', outputPath)
 }
 

@@ -19,7 +19,7 @@ export async function updateCommand(skills?: string[]) {
     return
   }
 
-  title('🔍 检查更新...')
+  title(' 检查更新...')
 
   // 按来源分组
   const bySource = new Map<string, LockEntry[]>()
@@ -80,7 +80,7 @@ export async function updateCommand(skills?: string[]) {
   if (updated === 0) {
     ok('所有 Skill 已是最新')
   } else {
-    log(`\n✅ 已更新 ${updated} 个 Skill`)
+    log(`\n[OK] 已更新 ${updated} 个 Skill`)
     showSetupHint()
   }
 }

@@ -158,7 +158,7 @@ export async function evalCommand(projectDir: string, opts: EvalOptions): Promis
     process.exit(result.status)
   }
 
-  title('✅ 评估流程结束')
+  title('[OK] 评估流程结束')
   log(colors.dim('  详见上方官方 CLI 输出与 data/runs/ 报告'))
 }
 
@@ -241,7 +241,7 @@ async function runAgentMode(ctx: {
     process.exit(exitCode || 1)
   }
 
-  title('✅ 评估流程结束')
+  title('[OK] 评估流程结束')
   log(colors.dim('  详见上方 agent 输出与 data/runs/ 报告'))
 }
 

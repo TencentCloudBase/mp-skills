@@ -24,7 +24,7 @@ export async function executeCommand(opts: ExecuteOptions): Promise<void> {
     cmd += ` --args '${opts.args}'`
   }
 
-  log(`⚡ 执行接口: ${opts.name}`)
+  log(`* 执行接口: ${opts.name}`)
   try {
     execSync(cmd, { stdio: 'inherit', timeout: 120_000 })
   } catch {

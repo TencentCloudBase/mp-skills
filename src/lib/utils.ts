@@ -61,7 +61,7 @@ export function spinner(text: string, opts?: { enabled?: boolean }): Spinner {
     },
     success(nextText?: string) {
       currentText = nextText || currentText
-      instance.success({ text: currentText, mark: '✓' })
+      instance.success({ text: currentText, mark: '*' })
     },
     error(nextText?: string) {
       currentText = nextText || currentText
