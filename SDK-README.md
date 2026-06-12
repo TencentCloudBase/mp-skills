@@ -133,6 +133,41 @@ module.exports = defineComponent({
 |---|---|
 | `ctx.apiName` | 当前接口名 |
 | `ctx.args` | 当前接口入参 |
+| `ctx.session` | 会话级键值存储，跨 API 调用共享数据（见下方） |
+
+#### 会话状态（ctx.session）
+
+一次用户对话内，多个 API 调用间共享数据的会话级 KV。适合在 `getRecommendedDrinks → selectDrink → confirmSku` 这类多步流程中传递上游结果，替代裸 `wx.Storage` 操作。
+
+```javascript
+// selectDrink — 存
+async handler({ drinkId }, ctx) {
+  const drink = await fetchDrink(drinkId)
+  ctx.session.set('selectedDrink', drink)       // 存到会话
+  ctx.session.set('drinkName', drink.name)
+  return reply.ok({ text: '已选好', structured: drink })
+}
+
+// confirmSku — 取
+async handler({ specs }, ctx) {
+  const drink = ctx.session.get('selectedDrink')  // 从会话拿
+  if (!drink) {
+    return reply.fail('请先选择一款饮品。')
+  }
+  // ...
+}
+```
+
+**API：**
+
+| 方法 | 说明 |
+|------|------|
+| `ctx.session.set(key, value)` | 存入键值 |
+| `ctx.session.get(key)` | 读取，不存在返回 `undefined` |
+| `ctx.session.delete(key)` | 删除单个键 |
+| `ctx.session.clear()` | 清空当前会话所有数据 |
+
+> `ctx.session` 仅在当前会话（同一 `sessionId`）内的 API 调用间共享。用户重新打开小程序 AI 或会话超时后自动清空。持久化存储应使用 `wx.Storage`。
 
 ---
 
@@ -293,6 +328,233 @@ module.exports = definePaidApi({
 })
 ```
 
+### Harness — 调用约束
+
+`defineHarness` 声明一个有限状态机，对 Agent 调用 API 的**顺序**和**参数来源**做硬约束。Agent 跳过步骤或编造参数时，框架直接拦截并返回纠正指令——不再依赖 SKILL.md 的提示词软约束。
+
+#### defineHarness
+
+```javascript
+// skills/<name>/harness.js
+const { defineHarness } = require('mp-skills')
+
+module.exports = defineHarness({
+  // 状态列表
+  states: [
+    'idle',
+    'drinks_loaded',
+    'drink_selected',
+    'sku_confirmed',
+    'order_confirmed',
+    'paid',
+  ],
+
+  // 初始状态
+  initialState: 'idle',
+
+  // 转移规则
+  transitions: [
+    {
+      // 规则名（仅日志用）
+      name: 'load-drinks',
+      // 允许从哪些状态出发
+      from: ['idle'],
+      // 到达的目标状态
+      to: 'drinks_loaded',
+      // 由哪些 API 调用触发
+      via: ['getRecommendedDrinks', 'searchDrinks'],
+    },
+    {
+      name: 'select-drink',
+      from: ['drinks_loaded'],
+      to: 'drink_selected',
+      via: ['selectDrink'],
+      // guards：校验入参必须来自上游 API 的返回值
+      guards: {
+        drinkId: {
+          $from: ['getRecommendedDrinks', 'searchDrinks'],
+          $source: 'items[].drinkId',
+        },
+      },
+    },
+    {
+      name: 'confirm-sku',
+      from: ['drink_selected'],
+      to: 'sku_confirmed',
+      via: ['confirmSku'],
+      guards: {
+        drinkId: { $from: ['selectDrink'], $source: 'drinkId' },
+        specs: { $from: ['selectDrink'], $source: 'specOptions' },
+      },
+    },
+    {
+      name: 'confirm-order',
+      from: ['sku_confirmed'],
+      to: 'order_confirmed',
+      via: ['confirmOrder'],
+    },
+    {
+      name: 'pay',
+      from: ['order_confirmed'],
+      to: 'paid',
+      via: ['payOrder'],
+    },
+    {
+      // 允许从任意中间态重新开始
+      name: 'restart',
+      from: ['paid', 'order_confirmed', 'sku_confirmed', 'drink_selected', 'drinks_loaded'],
+      to: 'idle',
+      via: ['getRecommendedDrinks', 'searchDrinks'],
+      resetContext: true,  // 清空上游上下文，开始新流程
+    },
+  ],
+
+  options: {
+    strictMode: true,     // 未声明转移规则的 API 直接拒绝
+    checkpoint: true,     // 开启状态快照：每次状态转移自动保存，下次会话恢复（见下方）
+  },
+})
+```
+
+#### 装配
+
+```javascript
+// skills/<name>/index.js
+const harness = require('./harness')
+
+module.exports = createSkill({
+  path: 'skills/drink-skill',
+  apis: require('./apis'),
+  harness,                     // ← SDK 自动生成 harness 中间件
+})
+```
+
+#### 约束行为
+
+**违规 1 — 跳步调用：** Agent 跳过 `selectDrink` 直接调 `confirmSku`
+
+```javascript
+// harness 中间件拦截，reply.fail：
+{
+  isError: true,
+  content: [{
+    type: 'text',
+    text: '当前处于「idle」阶段，不允许调用 confirmSku。'
+        + '正确流程：getRecommendedDrinks → selectDrink → confirmSku。'
+        + '请先调用 selectDrink 选择饮品。'
+  }]
+}
+```
+
+**违规 2 — 编造参数：** Agent 编造了一个不存在的 `drinkId` 调 `selectDrink`
+
+```javascript
+// harness guards 校验，reply.fail：
+{
+  isError: true,
+  content: [{
+    type: 'text',
+    text: '参数 drinkId="fake-123" 不在合法取值范围内。'
+        + '该字段必须来源于 getRecommendedDrinks 或 searchDrinks 接口返回的 items[].drinkId。'
+        + '请改用上游接口返回的值，禁止编造。'
+  }]
+}
+```
+
+**正常流程：** 每次成功调用后，`_meta.harness` 告诉 Agent 当前进度和下一步可操作的 API：
+
+```json
+{
+  "_meta": {
+    "harness": {
+      "state": "drink_selected",
+      "nextAllowed": ["confirmSku"],
+      "context": { "drinkId": "d_003" }
+    }
+  }
+}
+```
+
+#### Guards 字段说明
+
+| 字段 | 含义 |
+|------|------|
+| `$from` | 合法来源接口名（数组），Agent 必须先调过其中某一个 |
+| `$source` | 在该接口返回的 `structuredContent` 中取值的 JSONPath |
+
+Guard 校验逻辑：Agent 调用本接口时，框架从 `$from` 指定的上游接口返回值中按 `$source` 路径提取所有合法值，当前入参必须匹配其中一项，否则拒绝。
+
+#### Checkpoint（状态快照）
+
+`checkpoint: true` 后，每次状态转移自动保存快照——下次会话恢复时从最近断点继续，用户无需重复前置步骤。
+
+**默认：本地存储**（`wx.Storage`，不需额外配置）
+
+```javascript
+options: {
+  strictMode: true,
+  checkpoint: 'local',       // 自动存到 wx.Storage，下次会话自动恢复
+}
+```
+
+**内置 CloudBase：**
+
+```javascript
+options: {
+  strictMode: true,
+  checkpoint: 'cloud',          // 内置实现，无需手写 save/load
+  cloudEnv: 'your-env-id',      // CloudBase 环境 ID
+}
+```
+
+**自定义适配器（escape hatch）：**
+
+```javascript
+options: {
+  checkpoint: {
+    save: async ({ state, context, timestamp, sessionId }) => {
+      await wx.cloud.database().collection('checkpoints').doc(sessionId).set({ ... })
+    },
+    load: async (sessionId) => {
+      const { data } = await wx.cloud.database().collection('checkpoints').doc(sessionId).get()
+      return data
+    },
+  },
+}
+```
+
+**快照行为：**
+
+- 每次合法 `transition` 到达新状态，自动 `save({ state, context, timestamp })`
+- 下次会话启动时，自动 `load(sessionId)` 恢复状态和上下文
+- 被 guards 拦截的违规调用（跳步、编造参数）**不产生快照**
+
+**恢复示例：**
+
+```
+用户：想喝咖啡 → getRecommendedDrinks → 状态: drinks_loaded [快照]
+用户退出，30 分钟后重进
+  → harness 自动恢复: state=drinks_loaded, 上下文中有 drinkId
+  → 用户直接说 "就这个" 继续选品，无需重复搜索
+```
+
+#### 目录结构
+
+```
+skills/<name>/
+├── SKILL.md
+├── mcp.json
+├── harness.js          # ← 调用约束声明（集中式状态机）
+├── index.js            # 装配入口
+├── apis/
+│   ├── index.js
+│   └── *.js
+└── components/
+    └── */
+```
+
+---
+
 ### Agent — 自主推理
 
 `defineAgent` 把多个 API 组合成一个黑盒 Agent，LLM 一次 invoke，内部自闭环多步推理。
@@ -392,6 +654,8 @@ Agent 内部（同一 sessionId=abc）
 
 ---
 
+---
+
 ## 目录结构
 
 ```
@@ -400,9 +664,11 @@ my-miniapp/
 ├── pages/ ...
 └── skills/
     └── <name>/                    # ← create 生成
-        ├── mcp.json               # API / 组件 / Agent 声明
-        ├── index.js               # createSkill 装配入口
+        ├── mcp.json               # API / 组件 / Agent 声明（微信官方格式）
+        ├── schemas.js              # CLI 从 mcp.json 生成（Schema 校验用）
         ├── SKILL.md               # 业务说明书
+        ├── harness.js             # 调用约束声明（状态机，SDK 侧）
+        ├── index.js               # createSkill 装配入口
         ├── apis/
         │   ├── index.js           # API / Agent 注册表
         │   └── *.js               # defineApi / defineAgent 实现
