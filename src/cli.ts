@@ -192,12 +192,12 @@ program
 // ── gen — 根据已有项目生成 Skill ──────────────────────
 program
   .command('gen <project-dir>')
-  .description('分析已有小程序，生成符合规范的 Skill')
+  .description('分析已有小程序，启动 agent 多轮生成符合规范的 Skill（默认交互式，Ctrl+C 退出）')
   .option('--env <envId>', 'CloudBase 环境 ID', '')
   .requiredOption('--output <dir>', '生成的 Skill 文件输出目录')
   .option('--scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
   .option('--model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')
-  .option('--max-turns <n>', 'Agent 最大轮次（默认 30）')
+  .option('--non-interactive', '非交互模式：一次性跑完，适合脚本 / CI', false)
   .action(async (projectDir, opts) => {
     const { genCommand } = await import('./commands/gen.js')
     await genCommand(projectDir, opts)

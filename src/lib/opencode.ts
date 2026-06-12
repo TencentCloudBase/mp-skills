@@ -41,8 +41,12 @@ export function resolveOpencodeBin(): string | null {
  *   - 可选注入 skills.paths，让 opencode 通过标准机制自动发现指定目录下的 skill
  *     （目录约定：每个 skill 一个子目录，子目录内含 SKILL.md，opencode 从 paths 列表
  *     的每个目录扫描 *\/SKILL.md。绝对路径与 ~ 都支持）
+ *   - 可选注入一个自定义 agent（含 system prompt），并设为 default_agent
  */
-export function buildOpencodeConfig(creds: LlmCredentials, opts?: { skillPaths?: string[] }): string {
+export function buildOpencodeConfig(
+  creds: LlmCredentials,
+  opts?: { skillPaths?: string[]; agent?: { name: string; prompt: string } },
+): string {
   const config: Record<string, any> = {
     provider: {
       [OC_PROVIDER]: {
@@ -51,6 +55,7 @@ export function buildOpencodeConfig(creds: LlmCredentials, opts?: { skillPaths?:
         options: {
           baseURL: creds.baseUrl,
           apiKey: creds.apiKey,
+          maxRetries: 0,
         },
         models: {
           [creds.model]: { name: creds.model },
@@ -61,6 +66,16 @@ export function buildOpencodeConfig(creds: LlmCredentials, opts?: { skillPaths?:
   if (opts?.skillPaths && opts.skillPaths.length > 0) {
     config.skills = { paths: opts.skillPaths }
   }
+  if (opts?.agent) {
+    config.agent = {
+      [opts.agent.name]: {
+        description: opts.agent.name,
+        model: opencodeModelArg(creds),
+        prompt: opts.agent.prompt,
+      },
+    }
+    config.default_agent = opts.agent.name
+  }
   return JSON.stringify(config)
 }
 
@@ -70,21 +85,83 @@ export function opencodeModelArg(creds: LlmCredentials): string {
 }
 
 /**
- * 启动 opencode 子进程，逐行解析 NDJSON 事件流并打印精简进度。
- * 返回退出码。
+ * 以交互式 TUI 方式启动 opencode（继承当前终端的 stdio）。
+ * 用户可在 TUI 内多轮对话，随时 Ctrl+C 退出——SIGINT 会直接转发给子进程，
+ * 由 opencode 自行处理退出，父进程只等待其结束并返回退出码。
+ *
+ * 与 runOpencode（run 模式、捕获 NDJSON）不同：这里不解析事件流，
+ * 因为 TUI 自己负责渲染界面。
  */
-export function runOpencode(bin: string, args: string[], env: NodeJS.ProcessEnv): Promise<number> {
+export function runOpencodeInteractive(
+  bin: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<number> {
   return new Promise((resolvePromise) => {
     const child = spawn(bin, args, {
       env,
-      stdio: ['ignore', 'pipe', 'inherit'],
+      stdio: 'inherit',
+    })
+
+    // Ctrl+C：转发给子进程让 opencode 优雅退出，不在父进程直接抛出
+    const onSigint = (): void => {
+      child.kill('SIGINT')
+    }
+    process.on('SIGINT', onSigint)
+
+    child.on('error', (err) => {
+      process.removeListener('SIGINT', onSigint)
+      warn(`无法启动 opencode: ${err.message}`)
+      resolvePromise(1)
+    })
+    child.on('close', (code) => {
+      process.removeListener('SIGINT', onSigint)
+      resolvePromise(code ?? 0)
+    })
+  })
+}
+
+/**
+ * 启动 opencode 子进程，逐行解析 NDJSON 事件流并打印精简进度。
+ * 同时捕获 stderr 并即时打印，避免挂起时无任何报错输出。
+ * 返回退出码。
+ * 默认 10 分钟超时，避免 LLM API 无响应时无限挂起。
+ */
+export function runOpencode(
+  bin: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  opts?: { timeoutMs?: number },
+): Promise<number> {
+  const timeoutMs = opts?.timeoutMs ?? 10 * 60 * 1000
+
+  return new Promise((resolvePromise) => {
+    const child = spawn(bin, args, {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
 
     // opencode 在流式出错时仍可能以退出码 0 结束，需据 error 事件判定失败
     let sawError = false
 
-    const rl = createInterface({ input: child.stdout! })
-    rl.on('line', (line) => {
+    let timer: ReturnType<typeof setTimeout> | undefined = undefined
+    function resetTimer(): void {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        warn(`opencode 超时（${Math.round(timeoutMs / 1000)}s 无输出），正在终止...`)
+        warn('  可能原因：LLM API 配额超限、网络不通、或 API Key 无效')
+        warn('  请检查 .env 中的 OPENAI_BASE_URL / OPENAI_API_KEY 后重试')
+        child.kill('SIGTERM')
+        setTimeout(() => child.kill('SIGKILL'), 5000)
+        resolvePromise(1)
+      }, timeoutMs)
+    }
+    resetTimer()
+
+    // stdout：NDJSON 事件流
+    const rlOut = createInterface({ input: child.stdout! })
+    rlOut.on('line', (line) => {
+      resetTimer()
       const trimmed = line.trim()
       if (!trimmed) return
       try {
@@ -95,12 +172,28 @@ export function runOpencode(bin: string, args: string[], env: NodeJS.ProcessEnv)
       }
     })
 
+    // stderr：只显示错误摘要，避免整行打印（opencode 错误日志里常嵌入超长 system prompt）
+    const rlErr = createInterface({ input: child.stderr! })
+    const ERR_KEYWORDS = /error|fail|429|quota|EXCEED|unauthorized|timeout|refused|enotfound/i
+    rlErr.on('line', (line) => {
+      resetTimer()
+      const trimmed = line.trim()
+      if (!trimmed) return
+      if (ERR_KEYWORDS.test(trimmed)) {
+        const summarized = summarizeErrorLine(trimmed)
+        if (summarized) warn(`opencode: ${summarized}`)
+      }
+    })
+
     child.on('error', (err) => {
+      clearTimeout(timer)
       warn(`无法启动 opencode: ${err.message}`)
       resolvePromise(1)
     })
     child.on('close', (code) => {
-      rl.close()
+      clearTimeout(timer)
+      rlOut.close()
+      rlErr.close()
       const exit = code ?? 0
       resolvePromise(exit !== 0 ? exit : sawError ? 1 : 0)
     })
@@ -169,6 +262,32 @@ function summarizeInput(input: unknown): string {
   }
   if (typeof obj.pattern === 'string') return obj.pattern as string
   return ''
+}
+
+/**
+ * 把 opencode stderr 中含超长内容的错误行压缩成可读摘要。
+ * 日志格式：ERROR <ts> service=llm ... error={JSON} ... responseBody="{JSON}"
+ * 只提取并打印 error.name / responseBody.code / responseBody.message / url
+ */
+function summarizeErrorLine(raw: string): string {
+  const parts: string[] = []
+
+  const errorName = raw.match(/"name":"([^"]{1,100})"/)?.[1]
+  const statusCode = raw.match(/"statusCode":(\d{3})/)?.[1]
+  const code = raw.match(/"code":"([^"]{1,200})"/)?.[1]
+  const message = raw.match(/"message":"([^"]{1,500})"/)?.[1]
+  const url = raw.match(/"url":"([^"]{1,300})"/)?.[1]
+
+  if (errorName) parts.push(`error=${errorName}`)
+  if (statusCode) parts.push(`status=${statusCode}`)
+  if (code) parts.push(`code=${code}`)
+  if (message) parts.push(message.slice(0, 200))
+  if (url) parts.push(`url=${url}`)
+
+  if (parts.length > 0) return parts.join(' | ')
+  if (/^(INFO|DEBUG)\b/.test(raw)) return ''
+
+  return raw.slice(0, 500)
 }
 
 // ── SKILL.md 获取：本地候选 → 24h 缓存 → GitHub raw ──

@@ -1,39 +1,37 @@
 // ── gen 命令 ──
-// 使用 opencode（OpenAI 兼容协议）启动一个 coding agent，
-// 让它按 wxa-skills-generate 的工作流读源码、写 Skill 文件。
+// 把 gen 做成一个「面向 Skill 生成任务的 opencode 代理」：
+//   - 预置 system 约束（目标 / 边界，不固定步骤流程）
+//   - 注册 wxa-skills-generate + wxa-skills-validate 两个官方 skill 给 opencode
+//   - 默认进入交互式 TUI，agent 自主多轮「读项目 → 生成 → 校验 → 修复」
+//     用户随时 Ctrl+C 退出
+//   - --non-interactive 走 run 模式一次性跑完（脚本 / CI 兜底）
 //
 // 鉴权：统一 BYOK——只需一套 OpenAI 兼容凭据（OPENAI_BASE_URL/_API_KEY/_MODEL）。
-// 通过 OPENCODE_CONFIG_CONTENT 注入一个名为 byok 的 OpenAI 兼容 provider。
 
 import { existsSync, mkdirSync } from 'node:fs'
-import { resolve, join } from 'node:path'
-import { colors, kv, log, spinner, title, warn, resolveMiniprogramRoot } from '../lib/utils.js'
+import { resolve } from 'node:path'
+import { colors, kv, log, title, warn, resolveMiniprogramRoot } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
-import { ensureLlmCredentials } from '../lib/llm-credentials.js'
+import { ensureLlmCredentials, type LlmCredentials } from '../lib/llm-credentials.js'
+import { ensureSkill, globalSkillsRoot } from '../lib/skill-installer.js'
 import {
   resolveOpencodeBin,
   buildOpencodeConfig,
   opencodeModelArg,
   runOpencode,
-  fetchSkillMd,
+  runOpencodeInteractive,
 } from '../lib/opencode.js'
 
-// wxa-skills-generate SKILL.md 的 GitHub raw URL（作为系统提示）
-const GENERATE_SKILL_RAW_URL =
-  'https://raw.githubusercontent.com/wechat-miniprogram/ai-mode-skills/master/wxa-skills-generate/SKILL.md'
-
-// 本地候选路径：用户通过 mp-skills add 安装后会出现在这些位置
-const GENERATE_LOCAL_CANDIDATES = [
-  'skills/wxa-skills-generate/SKILL.md',
-  'miniprogram/skills/wxa-skills-generate/SKILL.md',
-]
+const GENERATE_SKILL_NAME = 'wxa-skills-generate'
+const VALIDATE_SKILL_NAME = 'wxa-skills-validate'
+const GEN_AGENT_NAME = 'mp-skills-gen'
 
 interface GenOptions {
   env: string
   output: string
   scenario?: string
   model?: string
-  maxTurns?: string
+  nonInteractive?: boolean
 }
 
 export async function genCommand(projectDir: string, opts: GenOptions): Promise<void> {
@@ -42,7 +40,6 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
   const projectPath = resolve(projectDir)
   const outputPath = resolve(opts.output)
 
-  // 检查项目目录
   if (!existsSync(projectPath)) {
     warn(`项目目录不存在: ${projectPath}`)
     process.exit(1)
@@ -72,40 +69,50 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     process.exit(1)
   }
 
+  // 确保两个官方 skill 就位（按需下载到 ~/.mp-skills/skills），并注册给 opencode
+  const genSkillDir = await ensureSkill({
+    skillName: GENERATE_SKILL_NAME,
+    verifySubpath: 'SKILL.md',
+    extraSearchBases: [process.cwd(), projectPath],
+    spinnerEnabled: !opts.nonInteractive,
+  })
+  if (!genSkillDir) {
+    warn(`无法获取 ${GENERATE_SKILL_NAME}`)
+    log('请检查网络，或手动安装：')
+    log(`  mp-skills add wechat-miniprogram/ai-mode-skills --skill ${GENERATE_SKILL_NAME}`)
+    process.exit(1)
+  }
+
+  const validateSkillDir = await ensureSkill({
+    skillName: VALIDATE_SKILL_NAME,
+    verifySubpath: 'SKILL.md',
+    extraSearchBases: [process.cwd(), projectPath],
+    spinnerEnabled: !opts.nonInteractive,
+  })
+  if (!validateSkillDir) {
+    warn(`无法获取 ${VALIDATE_SKILL_NAME}`)
+    log('请检查网络，或手动安装：')
+    log(`  mp-skills add wechat-miniprogram/ai-mode-skills --skill ${VALIDATE_SKILL_NAME}`)
+    process.exit(1)
+  }
+
   // 准备输出目录（agent 的工作目录）
   mkdirSync(outputPath, { recursive: true })
 
-  const promptSpinner = spinner('获取 wxa-skills-generate 工作流提示词...')
-  const generatePrompt = await fetchSkillMd(
-    GENERATE_SKILL_RAW_URL,
-    GENERATE_LOCAL_CANDIDATES.map((c) => join(projectPath, c)),
-  )
-  if (!generatePrompt) {
-    promptSpinner.error('无法获取 wxa-skills-generate 的 SKILL.md')
-    log('请检查网络连接，或手动安装：')
-    log('  mp-skills add wechat-miniprogram/ai-mode-skills --skill wxa-skills-generate')
-    process.exit(1)
-  }
-  promptSpinner.success('已加载 wxa-skills-generate 工作流提示词')
-
-  const prompt = buildPrompt({
-    systemPrompt: generatePrompt,
+  const systemPrompt = buildSystemPrompt({
     projectPath,
     miniprogramRoot,
     outputPath,
     scenario: opts.scenario,
+    generateSkillName: GENERATE_SKILL_NAME,
+    validateSkillName: VALIDATE_SKILL_NAME,
   })
 
-  title('🤖 启动 opencode 生成 Skill...')
-  kv('项目源码', projectPath)
-  kv('输出目录', outputPath)
-  if (opts.env) kv('TCB 环境', opts.env)
-  kv('模型', creds.model)
-  kv('端点', creds.baseUrl)
-  log('')
-
-  // 注入 OpenAI 兼容 provider
-  const configContent = buildOpencodeConfig(creds)
+  // 注入：BYOK provider + skills.paths（发现两个官方 skill）+ 自定义 agent（system 约束）
+  const configContent = buildOpencodeConfig(creds, {
+    skillPaths: [globalSkillsRoot()],
+    agent: { name: GEN_AGENT_NAME, prompt: systemPrompt },
+  })
 
   const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
@@ -116,9 +123,69 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     childEnv.CLOUDBASE_ENV_ID = opts.env
   }
 
+  title('🤖 启动 Skill 生成 agent...')
+  kv('项目源码', projectPath)
+  kv('输出目录', outputPath)
+  if (opts.env) kv('TCB 环境', opts.env)
+  kv('模型', creds.model)
+  kv('端点', creds.baseUrl)
+  kv('模式', opts.nonInteractive ? 'non-interactive（一次性）' : 'interactive（多轮，Ctrl+C 退出）')
+  log('')
+
+  if (opts.nonInteractive) {
+    await runNonInteractive(opencodeBin, outputPath, creds, childEnv)
+    return
+  }
+
+  await runInteractive(opencodeBin, outputPath, creds, childEnv)
+}
+
+/**
+ * 交互式模式：进入 opencode TUI，预置初始任务消息。
+ * agent 在 TUI 内自主多轮推进，用户可继续追问或随时 Ctrl+C 退出。
+ */
+async function runInteractive(
+  bin: string,
+  outputPath: string,
+  creds: LlmCredentials,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const args = [
+    outputPath, // TUI 工作目录（positional [project]）
+    '--agent',
+    GEN_AGENT_NAME,
+    '--model',
+    opencodeModelArg(creds),
+    '--prompt',
+    INITIAL_TASK_MESSAGE,
+  ]
+
+  const exitCode = await runOpencodeInteractive(bin, args, env)
+  // TUI 退出（含用户 Ctrl+C）属正常结束，不当作失败
+  log('')
+  title('已退出生成会话')
+  kv('输出目录', outputPath)
+  log(colors.dim('  产物已写入上述目录，可继续用 mp-skills validate / eval 检查'))
+  if (exitCode !== 0) {
+    log(colors.dim(`  （opencode 退出码 ${exitCode}）`))
+  }
+}
+
+/**
+ * 非交互模式：run 一次性跑完，捕获 NDJSON 事件流打印精简进度。
+ * 适合脚本 / CI。
+ */
+async function runNonInteractive(
+  bin: string,
+  outputPath: string,
+  creds: LlmCredentials,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
   const args = [
     'run',
-    prompt,
+    INITIAL_TASK_MESSAGE,
+    '--agent',
+    GEN_AGENT_NAME,
     '--model',
     opencodeModelArg(creds),
     '--dir',
@@ -126,9 +193,10 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     '--format',
     'json',
     '--dangerously-skip-permissions',
+    '--print-logs',
   ]
 
-  const exitCode = await runOpencode(opencodeBin, args, childEnv)
+  const exitCode = await runOpencode(bin, args, env)
   if (exitCode !== 0) {
     warn(`opencode 执行失败（退出码 ${exitCode}）`)
     process.exit(exitCode || 1)
@@ -136,55 +204,56 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
 
   title('✅ Skill 生成完成')
   kv('输出目录', outputPath)
-  title('下一步:')
-  log(colors.dim(`  cd ${projectPath}`))
-  log(colors.dim('  mp-skills validate    # 静态校验'))
-  log(colors.dim('  mp-skills eval .      # 端到端评估'))
 }
 
+// 进入会话时的初始任务消息（具体「怎么做」由 system prompt + skill 指引，agent 自主决定）
+const INITIAL_TASK_MESSAGE =
+  '请开始：分析输入小程序项目，在输出目录生成符合 wx.modelContext 规范的 Skill，并用 wxa-skills-validate 校验、按报错自行修复，直到校验通过。'
+
 /**
- * 组装发给 opencode 的完整 prompt：
- * 把 wxa-skills-generate SKILL.md 作为系统提示前置，再附上任务说明。
- * （opencode run 没有 system-prompt 参数，故拼接进 prompt）
+ * 构建注入给 agent 的 system prompt。
+ * 只规定「目标 / 边界 / 可用能力」，不规定固定步骤——让 agent 借助
+ * wxa-skills-generate / wxa-skills-validate 两个 skill 自主决定工作流。
  */
-function buildPrompt(args: {
-  systemPrompt: string
+function buildSystemPrompt(args: {
   projectPath: string
   miniprogramRoot: string
   outputPath: string
   scenario?: string
+  generateSkillName: string
+  validateSkillName: string
 }): string {
   const parts: string[] = []
-  parts.push('你是一个遵循以下工作流的小程序 Skill 生成专家。')
-  parts.push('────────── 工作流规范（wxa-skills-generate SKILL.md）──────────')
-  parts.push(args.systemPrompt)
-  parts.push('────────── 工作流规范结束 ──────────')
+  parts.push('你是小程序 Skill 生成专家，负责把一个现有微信小程序项目重构为符合 `wx.modelContext` 规范的 Skill 分包。')
   parts.push('')
-  parts.push('# 任务：将小程序项目重构为符合 wx.modelContext 规范的 Skill 分包')
+  parts.push('# 可用能力（opencode 标准 skill，按需自行调用其 SKILL.md）')
+  parts.push(`- \`${args.generateSkillName}\`：Skill 生成工作流规范，指导如何分析项目并产出 Skill。`)
+  parts.push(`- \`${args.validateSkillName}\`：Skill 静态校验与修复规范，用于校验产物并定位错误。`)
+  parts.push('在动手前，先阅读 `' + args.generateSkillName + '` 的 SKILL.md 了解推荐工作流；遇到不确定的产物结构时再查阅它。')
   parts.push('')
-  parts.push('## 输入')
+  parts.push('# 输入')
   parts.push(`- 小程序项目根（绝对路径）：\`${args.projectPath}\``)
-  parts.push(`- 小程序源码根（包含 app.json，绝对路径）：\`${args.miniprogramRoot}\``)
+  parts.push(`- 小程序源码根（含 app.json，绝对路径）：\`${args.miniprogramRoot}\``)
   parts.push(`  - 入口配置：\`${args.miniprogramRoot}/app.json\``)
   parts.push(`  - 页面目录：\`${args.miniprogramRoot}/pages/\``)
-  parts.push('- 用 Read/Glob/Grep 工具按上述绝对路径读取输入项目源码。')
+  parts.push('- 用 Read/Glob/Grep 按上述绝对路径读取输入项目源码。')
   parts.push('')
-  parts.push('## 输出')
-  parts.push(`- 你的工作目录（--dir）就是输出目录：\`${args.outputPath}\``)
-  parts.push('- 在工作目录下创建 `<skill-name>/` 子目录，写入 mcp.json / SKILL.md / index.js / apis/ / components/ 等')
-  parts.push('- 写文件时使用相对工作目录的相对路径（如 `drink-skill/SKILL.md`）')
-  parts.push('- 绝对不要修改输入项目的任何文件')
+  parts.push('# 输出')
+  parts.push(`- 工作目录即输出目录：\`${args.outputPath}\``)
+  parts.push('- 在工作目录下创建 `<skill-name>/` 子目录，写入 mcp.json / SKILL.md / index.js / apis/ / components/ 等。')
+  parts.push('- 写文件用相对工作目录的相对路径（如 `drink-skill/SKILL.md`）。')
   parts.push('')
   if (args.scenario) {
-    parts.push('## 业务场景')
+    parts.push('# 业务场景')
     parts.push(args.scenario)
     parts.push('')
   }
-  parts.push('## 执行要求')
-  parts.push('1. 使用 Read/Glob/Grep 工具系统地阅读输入项目的源码（app.json、页面、云函数）')
-  parts.push('2. 严格遵循上面的 wxa-skills-generate 6 阶段工作流')
-  parts.push('3. 用 Write 工具把生成的所有文件写到工作目录下')
-  parts.push('4. 完成后用文字总结：生成了哪个 Skill、有哪些原子接口、需要在 app.json 中合并哪些片段')
-  parts.push('5. 不要询问用户确认，按场景描述自主推进；信息不足时按你能找到的最合理方案产出')
+  parts.push('# 边界与约束（必须遵守）')
+  parts.push('1. 绝不修改输入项目的任何文件——输入项目只读。')
+  parts.push('2. 不固定步骤，但目标固定：产物必须能通过 `' + args.validateSkillName + '` 的校验。')
+  parts.push('3. 生成后主动调用 `' + args.validateSkillName + '` 校验；若失败，按报错修复并重新校验，直到通过。')
+  parts.push('4. 优先在已有产物上增量修改，不要每轮推倒重来。')
+  parts.push('5. 不要编造输入项目中不存在的页面、接口或字段；信息不足时基于源码中可确认的内容做最合理推断，并在产物中说明假设。')
+  parts.push('6. 关键节点用简洁文字向用户汇报进展（生成了哪个 Skill、有哪些原子接口、校验结果）。')
   return parts.join('\n')
 }
