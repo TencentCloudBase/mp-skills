@@ -3,15 +3,25 @@ import { program } from 'commander'
 import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
 import { ENV } from './lib/llm-credentials.js'
+import { showLogo, getLogoLines } from './lib/logo.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
 
 setVersion(version)
 
-/** 自动为命令添加遥测 */
+/** 每个命令前显示 Logo */
+function withLogo<T extends (...args: any[]) => Promise<void>>(fn: T): T {
+  return (async (...args: any[]) => {
+    showLogo()
+    await fn(...args)
+  }) as T
+}
+
+/** 自动为命令添加遥测 + Logo */
 function track(name: string, fn: (...args: any[]) => Promise<void>) {
   return async (...args: any[]) => {
+    showLogo()
     const start = Date.now()
     try {
       await fn(...args)
@@ -29,6 +39,9 @@ function track(name: string, fn: (...args: any[]) => Promise<void>) {
 }
 
 program.name('mp-skills').description('微信小程序 AI Skills 管理工具').version(version)
+
+// Logo 在 help 顶部也显示
+program.addHelpText('beforeAll', getLogoLines().join('\n'))
 
 // ── add — 安装 Skill ─────────────────────────────────
 program
@@ -94,6 +107,7 @@ program
   .option('-e, --env <envId>', '[agent] CloudBase 环境 ID')
   .option('--non-interactive', '[agent] 非交互模式：一次性跑完，适合脚本 / CI', false)
   .action(async (name, opts) => {
+    showLogo()
     const mode = opts.mode === 'agent' ? 'agent' : 'template'
     const cmdName = `create:${mode}`
     const start = Date.now()
@@ -225,6 +239,7 @@ program
   .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖对应环境变量')
   .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与对应环境变量')
   .action(async (opts) => {
+    showLogo()
     const { evalCommand } = await import('./commands/eval.js')
     await evalCommand(opts.project, opts)
   })
