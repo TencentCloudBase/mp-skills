@@ -2,6 +2,7 @@
 import { program } from 'commander'
 import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
+import { ENV } from './lib/llm-credentials.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -218,11 +219,11 @@ program
   .option('--mode <mode>', '评估模式：official（直接调官方 CLI）| agent（自主调官方 CLI）', 'official')
   .option(
     '-p, --provider <name>',
-    `LLM 提供方预设（deepseek / glm / kimi / minimax）；预填 baseUrl 与默认 model，仍需配置 OPENAI_API_KEY`,
+    `LLM 提供方预设（deepseek / glm / kimi / minimax）；预填 baseUrl 与默认 model，仍需配置 ${ENV.API_KEY}`,
   )
-  .option('-m, --model <name>', '模型名，覆盖 --provider 预设与 OPENAI_MODEL 环境变量')
-  .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖 OPENAI_API_KEY 环境变量')
-  .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与 OPENAI_BASE_URL 环境变量')
+  .option('-m, --model <name>', `模型名，覆盖 --provider 预设与 ${ENV.MODEL} 环境变量`)
+  .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖对应环境变量')
+  .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与对应环境变量')
   .action(async (projectDir, opts) => {
     const { evalCommand } = await import('./commands/eval.js')
     await evalCommand(projectDir || '.', opts)

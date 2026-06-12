@@ -11,7 +11,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
 import { colors, log, warn } from './utils.js'
-import type { LlmCredentials } from './llm-credentials.js'
+import { ENV, type LlmCredentials } from './llm-credentials.js'
 
 // opencode provider 名（注入到 OPENCODE_CONFIG_CONTENT）
 // 注意：opencode 把 models 映射的「键名」当作实际 API 模型名发送，
@@ -149,7 +149,7 @@ export function runOpencode(
       timer = setTimeout(() => {
         warn(`opencode 超时（${Math.round(timeoutMs / 1000)}s 无输出），正在终止...`)
         warn('  可能原因：LLM API 配额超限、网络不通、或 API Key 无效')
-        warn('  请检查 .env 中的 OPENAI_BASE_URL / OPENAI_API_KEY 后重试')
+        warn(`  请检查 .env 中的 ${ENV.BASE_URL} / ${ENV.API_KEY} 后重试`)
         child.kill('SIGTERM')
         setTimeout(() => child.kill('SIGKILL'), 5000)
         resolvePromise(1)

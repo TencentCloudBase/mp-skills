@@ -3,7 +3,7 @@
 // 由 src/commands/create.ts 在 --ai 模式下调用。
 // 不解析 CLI 参数：调用方需把 projectPath / miniprogramRoot / outputPath / 可选 name 算好后传入。
 //
-// 鉴权：BYOK——OpenAI 兼容凭据（OPENAI_BASE_URL / _API_KEY / _MODEL）。
+// 鉴权：BYOK——OpenAI 兼容凭据（WXA_SKILL_EVAL_LLM_BASE_URL / _API_KEY / _MODEL）。
 
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
@@ -40,7 +40,7 @@ export interface RunAiGenerateArgs {
   scenario?: string
   /** 可选 LLM 提供方预设（deepseek / glm / kimi / minimax 等），用于预填 baseUrl 与默认 model。 */
   provider?: string
-  /** 可选模型名，覆盖 provider 预设与 OPENAI_MODEL；最终模型由 ensureLlmCredentials 解析。 */
+  /** 可选模型名，覆盖 provider 预设与 WXA_SKILL_EVAL_LLM_MODEL；最终模型由 ensureLlmCredentials 解析。 */
   model?: string
   /** 可选本轮诉求；存在时直接作为 initial message 的任务文本，否则回落到默认探索 / 生成话术。 */
   query?: string
