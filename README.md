@@ -16,6 +16,10 @@
 > [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
 
 ```bash
+# 先看看有什么 Skill 可用
+npx mp-skills find
+
+# 找到想要的，直接安装
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 ```
 
@@ -23,16 +27,19 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
 ## 快速开始
 
-### 安装一个 Skill
+### 发现并安装 Skill
 
 ```bash
-# 交互式选择并安装 Skill
+# 1️⃣ 先搜索看看有哪些可用 Skill
+npx mp-skills find
+
+# 2️⃣ 交互式选择并安装 Skill
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
-# 安装指定 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
+# 3️⃣ 或直接安装指定 Skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 
-# 安装仓库中所有 Skill
+# 4️⃣ 一键安装所有
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 ```
 
@@ -83,7 +90,7 @@ npx mp-skills setup
 npx mp-skills add awesome-miniprogram
 
 # GitHub shorthand（指定单个 Skill）
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 
 # 安装全部
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
@@ -92,7 +99,7 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 npx mp-skills add ./my-local-skill
 
 # 跳过确认
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill -y
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name> -y
 ```
 
 | 选项                   | 说明                                                       |
@@ -105,17 +112,22 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill -y
 
 ### find
 
-跨仓库搜索可用的 Skill。
+跨注册仓库搜索可用的 Skill。不需要提前知道 Skill 来自哪个仓库，`find` 会自动查询所有注册源。
 
 ```bash
 # 列出所有远程可用 Skill
 npx mp-skills find
 
-# 按关键词搜索
+# 按关键词搜索（中英文均可）
 npx mp-skills find 咖啡
 npx mp-skills find payment
 npx mp-skills find 挂号
+
+# 搜索到后可以直接用 add 安装
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 ```
+
+发现 Skill → 安装 Skill → 环境搭建，三步搞定。
 
 ---
 
@@ -146,9 +158,9 @@ npx mp-skills list --all
 移除已安装的 Skill。
 
 ```bash
-npx mp-skills remove drink-skill
+npx mp-skills remove <name>
 npx mp-skills remove --all
-npx mp-skills remove drink-skill -y
+npx mp-skills remove <name> -y
 ```
 
 | 选项        | 说明               |
@@ -167,7 +179,7 @@ npx mp-skills remove drink-skill -y
 npx mp-skills update
 
 # 检查指定
-npx mp-skills update drink-skill payment-skill
+npx mp-skills update <name1> <name2>
 ```
 
 ---
@@ -179,7 +191,7 @@ npx mp-skills update drink-skill payment-skill
 ```bash
 npx mp-skills new my-app
 cd my-app
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 ```
 
 ---
