@@ -189,8 +189,7 @@ export function writeSharedConfig(projectPath: string, envId: string): boolean {
     '  CLOUD_ENV_ID: ' + JSON.stringify(envId) + ',',
     '}',
     '',
-  ].join('
-')
+  ].join('\n')
 
   writeFileSync(configPath, tmpl, 'utf-8')
   return true
