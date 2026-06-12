@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { readLock } from '../lib/lock-file.js'
 import { listRemoteSkills, cloneRepo, cleanupClone, hashDirectory } from '../lib/git.js'
-import { installSkill } from '../lib/installer.js'
+import { installSkill, showSetupHint } from '../lib/installer.js'
 import { parseSource } from '../lib/source-parser.js'
 import { log, warn, ok, title } from '../lib/utils.js'
 import type { LockEntry } from '../types.js'
@@ -81,5 +81,6 @@ export async function updateCommand(skills?: string[]) {
     ok('所有 Skill 已是最新')
   } else {
     log(`\n✅ 已更新 ${updated} 个 Skill`)
+    showSetupHint()
   }
 }

@@ -67,7 +67,23 @@ export function installSkill(
   })
 
   console.log('   ✓ 已记录版本')
+  _setupHintShown = false  // 重置标记，让下次 install 重新提示
   return { skillName, targetDir }
+}
+
+// ── 安装完成提示 ──
+// 确保 setup 提示在批量安装中只出现一次
+
+let _setupHintShown = false
+
+export function showSetupHint(): void {
+  if (_setupHintShown) return
+  _setupHintShown = true
+  console.log('')
+  console.log('  ═══════════════════════════════════════════')
+  console.log('  ⚡ 下一步：执行 mp-skills setup')
+  console.log('     聚合云函数、生成项目级 cloudbaserc.json、初始化数据库')
+  console.log('  ═══════════════════════════════════════════')
 }
 
 /**
