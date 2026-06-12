@@ -86,7 +86,7 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
   if (!genSkillDir) {
     warn(`无法获取 ${GENERATE_SKILL_NAME}`)
     log('请检查网络，或手动安装：')
-    log(`  mp-skills add wechat-miniprogram/ai-mode-skills --skill ${GENERATE_SKILL_NAME}`)
+    log(`  npx mp-skills add wechat-miniprogram/ai-mode-skills --skill ${GENERATE_SKILL_NAME}`)
     process.exit(1)
   }
 
@@ -99,7 +99,7 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
   if (!validateSkillDir) {
     warn(`无法获取 ${VALIDATE_SKILL_NAME}`)
     log('请检查网络，或手动安装：')
-    log(`  mp-skills add wechat-miniprogram/ai-mode-skills --skill ${VALIDATE_SKILL_NAME}`)
+    log(`  npx mp-skills add wechat-miniprogram/ai-mode-skills --skill ${VALIDATE_SKILL_NAME}`)
     process.exit(1)
   }
 

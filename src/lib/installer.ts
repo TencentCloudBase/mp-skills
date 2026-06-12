@@ -76,12 +76,15 @@ export function installSkill(
 
 let _setupHintShown = false
 
-export function showSetupHint(): void {
+export function showSetupHint(projectName?: string): void {
   if (_setupHintShown) return
   _setupHintShown = true
   console.log('')
   console.log('  ═══════════════════════════════════════════')
-  console.log('  * 下一步：执行 mp-skills setup')
+  if (projectName) {
+    console.log(`    cd ${projectName}`)
+  }
+  console.log('  * 下一步：执行 npx mp-skills setup')
   console.log('     聚合云函数、生成项目级 cloudbaserc.json、初始化数据库')
   console.log('  ═══════════════════════════════════════════')
 }

@@ -74,7 +74,7 @@ export async function statusCommand(projectDir: string): Promise<void> {
 
   // ── 总体建议 ──
   if (funcMissing.length > 0 || colMissing.length > 0) {
-    console.log('运行 mp-skills setup 处理待办项。')
+    console.log('运行 npx mp-skills setup 处理待办项。')
   } else {
     console.log('状态正常。')
   }

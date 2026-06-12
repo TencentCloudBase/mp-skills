@@ -38,8 +38,50 @@ export async function newCommand(name: string): Promise<void> {
   log(`\n[OK] 项目已创建: ${name}`)
   log(`   cd ${name}`)
   log(`     编辑 project.config.json，将 appid 替换为你的小程序 AppID`)
-  log(`   mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill`)
+  log(`   npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill <skill-name>`)
   log(`   或查看 docs/SKILL-DEV-GUIDE.md`)
-  log(`   或使用微信开发者工具打开本项目`)
-  showSetupHint()
+
+  // 输出微信开发者工具打开命令（自动识别系统）
+  const devtoolsPath = resolveDevtoolsCli()
+  if (devtoolsPath) {
+    log(`   ${devtoolsPath} open --project ${resolve(name)}`)
+  } else {
+    log(`   用微信开发者工具打开 ${resolve(name)}`)
+  }
+  showSetupHint(name)
+}
+
+/**
+ * 自动检测微信开发者工具 CLI 路径
+ */
+function resolveDevtoolsCli(): string | null {
+  // 环境变量优先
+  const envCli = process.env.WECHAT_DEVTOOLS_CLI || process.env.WXA_CLI
+  if (envCli) return envCli
+
+  if (process.platform === 'win32') {
+    const candidates = [
+      'C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat',
+      'C:\\Program Files\\Tencent\\微信web开发者工具\\cli.bat',
+    ]
+    for (const p of candidates) {
+      if (existsSync(p)) return `"${p}"`
+    }
+  } else {
+    const candidates = [
+      '/Applications/wechatwebdevtools.app/Contents/MacOS/cli',
+      `${process.env.HOME}/Applications/wechatwebdevtools.app/Contents/MacOS/cli`,
+    ]
+    for (const p of candidates) {
+      if (existsSync(p)) return p
+    }
+  }
+
+  // 尝试系统命令
+  try {
+    execSync('wechatidecli --version', { stdio: 'ignore' })
+    return 'wechatidecli'
+  } catch {
+    return null
+  }
 }

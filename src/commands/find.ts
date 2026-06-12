@@ -130,7 +130,7 @@ async function staticSearch(keyword: string): Promise<void> {
     if (r.description) {
       console.log(`    ${pc.dim(r.description)}`)
     }
-    console.log(`    ${pc.dim('安装：')}mp-skills add ${r.repo} --skill ${r.name}`)
+    console.log(`    ${pc.dim('安装：')}npx mp-skills add ${r.repo} --skill ${r.name}`)
     console.log('')
   }
 
@@ -177,7 +177,7 @@ async function interactiveSearch(): Promise<void> {
   }
   console.log('')
   console.log(`  ${pc.dim('安装命令：')}`)
-  console.log(`  ${pc.cyan(`mp-skills add ${selected.repo} --skill ${selected.name}`)}`)
+  console.log(`  ${pc.cyan(`npx mp-skills add ${selected.repo} --skill ${selected.name}`)}`)
   console.log('')
 }
 

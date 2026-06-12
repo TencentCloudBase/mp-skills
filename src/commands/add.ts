@@ -200,8 +200,8 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       for (const s of skills) {
         log(`  ${s.name}`)
       }
-      log(`\n安装: mp-skills add ${source} --skill <name>`)
-      log(`全部: mp-skills add ${source} --all`)
+      log(`\n安装: npx mp-skills add ${source} --skill <name>`)
+      log(`全部: npx mp-skills add ${source} --all`)
     }
   } catch (err) {
     console.error(`[ERR] ${(err as Error).message}`)

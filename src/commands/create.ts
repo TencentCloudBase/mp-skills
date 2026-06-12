@@ -76,7 +76,7 @@ export async function createCommand(name?: string): Promise<void> {
     }
   }
 
-  log(`\n编辑后可用 mp-skills add ./${skillName} 安装到其他项目`)
+  log(`\n编辑后可用 npx mp-skills add ./${skillName} 安装到其他项目`)
 }
 
 function injectToAppJson(appJsonPath: string, skillName: string) {

@@ -35,7 +35,7 @@ export async function listCommand(opts: ListOptions): Promise<void> {
   if (opts.remote || opts.all) {
     console.log('')
     console.log('远程安装：')
-    console.log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills')
+    console.log('  npx mp-skills add TencentCloudBase/awesome-miniprogram-skills')
   }
 }
 

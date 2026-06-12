@@ -99,7 +99,7 @@ export function generateCollectionGuides(collections: MergedCollection[]): strin
   }
 
   lines.push('')
-  lines.push('  * 执行 mp-skills setup --database 自动创建集合、索引和安全规则')
+  lines.push('  * 执行 npx mp-skills setup --database 自动创建集合、索引和安全规则')
   lines.push('  https://tcb.cloud.tencent.com/dev#/db')
 
   return lines
