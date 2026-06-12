@@ -9,6 +9,7 @@
   "files": [
     "dist/cli.cjs",
     "templates/",
+    "mp-skills-shared/",
     "README.md"
   ],
   "scripts": {

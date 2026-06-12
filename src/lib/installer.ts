@@ -2,9 +2,15 @@
 // 拷贝 Skill，注入 app.json / project.config.json，写入锁文件
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync } from 'node:fs'
-import { join, relative, dirname } from 'node:path'
+import { join, relative, dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { hashDirectory } from './git.js'
 import { addLockEntry } from './lock-file.js'
+
+// CLI 包根目录（mp-skills-shared/ 与其同级）
+const __filename_cli = fileURLToPath(import.meta.url)
+const CLI_ROOT = resolve(dirname(__filename_cli), '..', '..')
+const SHARED_DIR = join(CLI_ROOT, 'mp-skills-shared')
 
 export interface InstallOptions {
   skillName?: string
@@ -35,6 +41,18 @@ export function installSkill(
     cpSync(skillPath, targetDir, { recursive: true })
   }
   console.log(`   ✓ ${mpRoot}/skills/${skillName}/`)
+
+  // 1.5 安装共享目录 _shared/
+  const sharedTarget = join(projectPath, mpRoot, 'skills', '_shared')
+  if (existsSync(SHARED_DIR)) {
+    if (existsSync(sharedTarget)) {
+      cpSync(SHARED_DIR, sharedTarget, { recursive: true, force: true })
+    } else {
+      mkdirSync(sharedTarget, { recursive: true })
+      cpSync(SHARED_DIR, sharedTarget, { recursive: true })
+    }
+    console.log(`   ✓ ${mpRoot}/skills/_shared/`)
+  }
 
   // 2. 更新 app.json — 从 project.config.json 取 miniprogramRoot
   const projectConfigPath = join(projectPath, 'project.config.json')
