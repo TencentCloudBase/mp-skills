@@ -1,15 +1,12 @@
 // ── new 命令 ──
 // 创建新的小程序项目，含 AI Skill 支持
 
-import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync } from 'node:fs'
-import { join, resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 import { log, ok, warn } from '../lib/utils.js'
 import { showSetupHint } from '../lib/installer.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const TEMPLATES_DIR = join(__dirname, '..', '..', 'templates')
+import { BASE } from '../lib/templates-data.js'
 
 export async function newCommand(name: string): Promise<void> {
   const targetDir = resolve(name)
@@ -21,15 +18,13 @@ export async function newCommand(name: string): Promise<void> {
 
   log(`\n📦 创建项目: ${name}`)
 
-  const baseDir = join(TEMPLATES_DIR, 'base')
-  if (!existsSync(baseDir)) {
-    warn('未找到项目模板')
-    return
-  }
-
-  // 拷贝基础骨架
+  // 从内联模板数据创建
   mkdirSync(targetDir, { recursive: true })
-  cpSync(baseDir, targetDir, { recursive: true })
+  for (const [relPath, content] of Object.entries(BASE)) {
+    const fullPath = join(targetDir, relPath)
+    mkdirSync(join(fullPath, '..'), { recursive: true })
+    writeFileSync(fullPath, content, 'utf-8')
+  }
   ok('项目骨架已生成')
 
   // 初始化 git

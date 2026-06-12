@@ -6,6 +6,10 @@
  *
  * Only Node.js built-in modules and packages with native deps are externalized.
  */
+
+// ── 第 1 步：生成内联模板数据 ──
+await import('./gen-templates.mjs');
+
 import * as esbuild from 'esbuild';
 
 // Node.js built-ins — these CANNOT be bundled and must stay external

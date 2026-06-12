@@ -2,14 +2,11 @@
 // 在已有小程序项目中创建一个新的 Skill 骨架
 // 支持交互式确认
 
-import { existsSync, mkdirSync, cpSync, writeFileSync, readFileSync } from 'node:fs'
-import { join, resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { log, ok, warn } from '../lib/utils.js'
+import { SKELETON } from '../lib/templates-data.js'
 import * as readline from 'node:readline'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const TEMPLATES_DIR = join(__dirname, '..', '..', 'templates')
 
 export async function createCommand(name?: string): Promise<void> {
   const projectPath = resolve('.')
@@ -53,15 +50,13 @@ export async function createCommand(name?: string): Promise<void> {
     return
   }
 
-  // 从模板创建
-  const skeletonDir = join(TEMPLATES_DIR, 'skill-skeleton')
-  if (!existsSync(skeletonDir)) {
-    warn('未找到 Skill 模板')
-    return
-  }
-
+  // 从内联模板数据创建
   mkdirSync(targetDir, { recursive: true })
-  cpSync(skeletonDir, targetDir, { recursive: true })
+  for (const [relPath, content] of Object.entries(SKELETON)) {
+    const fullPath = join(targetDir, relPath)
+    mkdirSync(join(fullPath, '..'), { recursive: true })
+    writeFileSync(fullPath, content, 'utf-8')
+  }
 
   log(`\n📦 已创建 Skill: ${skillName}`)
   ok(`${mpRoot}/skills/${skillName}/`)
