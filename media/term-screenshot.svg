@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="terminal" baseProfile="full" viewBox="0 0 640 206" width="640" version="1.1">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="terminal" baseProfile="full" viewBox="0 0 640 172" width="640" version="1.1">
     <defs>
         <termtosvg:template_settings xmlns:termtosvg="https://github.com/nbedos/termtosvg">
-            <termtosvg:screen_geometry columns="80" rows="12"/>
+            <termtosvg:screen_geometry columns="80" rows="10"/>
             <termtosvg:animation type="css"/>
         </termtosvg:template_settings>
         <style type="text/css" id="generated-style"><![CDATA[#screen {
@@ -14,24 +14,7 @@
             dominant-baseline: text-before-edge;
             white-space: pre;
         }
-    
-            :root {
-                --animation-duration: 1000ms;
-            }
-
-            @keyframes roll {
-                0.000%{transform:translateY(0px)}
-100.000%{transform:translateY(0px)}
-            }
-
-            #screen_view {
-                animation-duration: 1000ms;
-                animation-iteration-count:infinite;
-                animation-name:roll;
-                animation-timing-function: steps(1,end);
-                animation-fill-mode: forwards;
-            }
-        ]]></style>
+    ]]></style>
         <style type="text/css" id="user-style">
             /* The colors defined below are the default 16 colors used for rendering text of the terminal. Adjust
                them as needed.
@@ -56,6 +39,6 @@
             .color15 {fill: #f2f2f2;}
         </style>
     </defs>
-    <svg id="screen" width="640" height="204" viewBox="0 0 640 204" preserveAspectRatio="xMidYMin slice">
-    <rect class="background" height="100%" width="100%" x="0" y="0"/><defs><g id="g1"><text x="0" textLength="456" class="foreground">  update [skills...]             &#26816;&#26597;&#24182;&#26356;&#26032;&#24050;&#23433;&#35013;&#30340; Skill</text></g><g id="g2"><text x="0" textLength="488" class="foreground">  validate [project-dir]         &#23545;&#39033;&#30446;&#20013; Skills &#36827;&#34892;&#38745;&#24577;&#26657;&#39564;</text></g><g id="g3"><text x="0" textLength="432" class="foreground">  execute [options]              &#25191;&#34892; Skill &#30340;&#21407;&#23376;&#25509;&#21475;</text></g><g id="g4"><text x="0" textLength="384" class="foreground">  render [options]               &#28210;&#26579; Skill &#32452;&#20214;</text></g><g id="g5"><text x="0" textLength="648" class="foreground">  setup [options] [project-dir]  &#19968;&#31449;&#24335;&#29615;&#22659;&#25645;&#24314;&#65306;&#32858;&#21512;&#20113;&#20989;&#25968;&#12289;&#21019;&#24314;&#25968;&#25454;&#24211;&#38598;&#21512;&#12289;&#26816;&#26597;</text></g><g id="g6"><text x="0" textLength="32" class="foreground">&#26381;&#21153;</text></g><g id="g7"><text x="0" textLength="536" class="foreground">  status [project-dir]           &#26597;&#30475;&#20113;&#20989;&#25968;&#12289;&#25968;&#25454;&#24211;&#12289;&#26381;&#21153;&#30340;&#29366;&#24577;&#24046;&#24322;</text></g><g id="g8"><text x="0" textLength="648" class="foreground">  doctor [project-dir]           &#20581;&#24247;&#26816;&#26597;&#65306;&#26816;&#27979;&#20113;&#20989;&#25968;&#32852;&#36890;&#24615;&#12289;&#25968;&#25454;&#24211;&#38598;&#21512;&#12289;&#26381;&#21153;&#37197;&#32622;</text></g><g id="g9"><text x="0" textLength="640" class="foreground">  eval [options]                 &#23545;&#24050;&#26377; Skills &#39033;&#30446;&#21551;&#21160;&#31471;&#21040;&#31471;&#36136;&#37327;&#35780;&#20272;&#65288;&#38656;&#20808;&#23433;&#35013; </text></g><g id="g10"><text x="0" textLength="136" class="foreground">wxa-skills-eval&#65289;</text></g><g id="g11"><text x="0" textLength="456" class="foreground">  help [command]                 display help for command</text></g><g id="g12"><text x="0" textLength="8" class="background"> </text></g></defs><g id="screen_view"><g><use xlink:href="#g1" y="0"/><use xlink:href="#g2" y="17"/><use xlink:href="#g3" y="34"/><use xlink:href="#g4" y="51"/><use xlink:href="#g5" y="68"/><use xlink:href="#g6" y="85"/><use xlink:href="#g7" y="102"/><use xlink:href="#g8" y="119"/><use xlink:href="#g9" y="136"/><use xlink:href="#g10" y="153"/><use xlink:href="#g11" y="170"/><rect x="0" y="187" width="8" height="17" class="foreground"/><use xlink:href="#g12" y="187"/></g></g></svg>
+    <svg id="screen" width="640" height="170" viewBox="0 0 640 170" preserveAspectRatio="xMidYMin slice">
+    <rect class="background" height="100%" width="100%" x="0" y="0"/><defs><g id="g1"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#bcbcbc">&#9608;&#9608;     &#9608;&#9608; &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;           &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;    &#9608;&#9608; &#9608;&#9608;&#9608;&#9608; &#9608;&#9608;       &#9608;&#9608;        &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  </text></g><g id="g2"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#9e9e9e">&#9608;&#9608;&#9608;   &#9608;&#9608;&#9608; &#9608;&#9608;     &#9608;&#9608;         &#9608;&#9608;    &#9608;&#9608; &#9608;&#9608;   &#9608;&#9608;   &#9608;&#9608;  &#9608;&#9608;       &#9608;&#9608;       &#9608;&#9608;    &#9608;&#9608; </text></g><g id="g3"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#808080">&#9608;&#9608;&#9608;&#9608; &#9608;&#9608;&#9608;&#9608; &#9608;&#9608;     &#9608;&#9608;         &#9608;&#9608;       &#9608;&#9608;  &#9608;&#9608;    &#9608;&#9608;  &#9608;&#9608;       &#9608;&#9608;       &#9608;&#9608;       </text></g><g id="g4"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#626262">&#9608;&#9608; &#9608;&#9608;&#9608; &#9608;&#9608; &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;&#9608;&#9608;&#9608;     &#9608;&#9608;  &#9608;&#9608;       &#9608;&#9608;        &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  </text></g><g id="g5"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#444444">&#9608;&#9608;     &#9608;&#9608; &#9608;&#9608;                      &#9608;&#9608; &#9608;&#9608;  &#9608;&#9608;    &#9608;&#9608;  &#9608;&#9608;       &#9608;&#9608;             &#9608;&#9608; </text></g><g id="g6"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#303030">&#9608;&#9608;     &#9608;&#9608; &#9608;&#9608;                &#9608;&#9608;    &#9608;&#9608; &#9608;&#9608;   &#9608;&#9608;   &#9608;&#9608;  &#9608;&#9608;       &#9608;&#9608;       &#9608;&#9608;    &#9608;&#9608; </text></g><g id="g7"><text x="0" textLength="16" class="foreground">  </text><text x="16" textLength="624" fill="#1c1c1c">&#9608;&#9608;     &#9608;&#9608; &#9608;&#9608;                 &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;    &#9608;&#9608; &#9608;&#9608;&#9608;&#9608; &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608; &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;  </text></g><g id="g8"><text x="0" textLength="288" class="foreground">Usage: mp-skills [options] [command]</text></g><g id="g9"><text x="0" textLength="8" class="background"> </text></g></defs><g><use xlink:href="#g1" y="0"/><use xlink:href="#g2" y="17"/><use xlink:href="#g3" y="34"/><use xlink:href="#g4" y="51"/><use xlink:href="#g5" y="68"/><use xlink:href="#g6" y="85"/><use xlink:href="#g7" y="102"/><use xlink:href="#g8" y="136"/><rect x="0" y="153" width="8" height="17" class="foreground"/><use xlink:href="#g9" y="153"/></g></svg>
 </svg>
