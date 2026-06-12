@@ -123,7 +123,22 @@ export function mergeSkillCloudbaserc(projectPath: string): ProjectCloudbaserc {
 }
 
 /**
- * 将合并后的项目级 cloudbaserc.json 写入到项目根目录
+ * 解析字符串中的 {{env.XXX}} 插值为环境变量值。
+ * 未设环境变量时保留原样并打印警告。
+ */
+function resolveEnvVars(value: string): string {
+  return value.replace(/\{\{env\.(\w+)\}\}/g, (_, name) => {
+    const envVal = process.env[name]
+    if (envVal) return envVal
+    console.warn(`  ⚠️  环境变量 ${name} 未设置，保留插值 {{env.${name}}}，tcb CLI 可运行时解析`)
+    return `{{env.${name}}}`
+  })
+}
+
+/**
+ * 将合并后的项目级 cloudbaserc.json 写入到项目根目录。
+ * 自动解析 {{env.XXX}} 插值为实际环境变量值，
+ * 确保 tcb CLI 和直接 MCP 调用都能获得正确的环境 ID。
  */
 export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = false): string | null {
   const merged = mergeSkillCloudbaserc(projectPath)
@@ -132,12 +147,18 @@ export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = f
     return null
   }
 
-  const destPath = join(projectPath, 'cloudbaserc.json')
-
-  if (dryRun) {
-    return JSON.stringify(merged, null, 2)
+  // 解析 envId 中的 {{env.ENV_ID}} 插值
+  if (merged.envId) {
+    merged.envId = resolveEnvVars(merged.envId)
   }
 
-  writeFileSync(destPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8')
+  const destPath = join(projectPath, 'cloudbaserc.json')
+  const content = JSON.stringify(merged, null, 2) + '\n'
+
+  if (dryRun) {
+    return content
+  }
+
+  writeFileSync(destPath, content, 'utf-8')
   return destPath
 }
