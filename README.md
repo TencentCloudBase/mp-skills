@@ -15,7 +15,9 @@
   </a>
 </p>
 
-让微信小程序接入 AI 生态——为小程序安装 `wx.modelContext` Skill，构建 AI 友好的小程序。
+让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。
+
+> [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
 
 ```bash
 npx mp-skills add awesome-miniprogram

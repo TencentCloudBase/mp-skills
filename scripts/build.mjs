@@ -10,6 +10,14 @@
 // ── 第 1 步：生成内联模板数据 ──
 await import('./gen-templates.mjs');
 
+// 格式化生成的模板数据（确保 CI format:check 通过）
+import { execSync } from 'node:child_process';
+try {
+  execSync('npx prettier --write src/lib/templates-data.ts', { stdio: 'ignore' });
+} catch {
+  // prettier 不可用时忽略
+}
+
 import * as esbuild from 'esbuild';
 
 // Node.js built-ins — these CANNOT be bundled and must stay external
