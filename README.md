@@ -11,6 +11,10 @@
   <a href="https://nodejs.org/"><img src="https://img.shields.io/node/v/mp-skills?style=flat-square" alt="node version"></a>
 </p>
 
+<p align="center">
+  <img src="media/term-screenshot.svg" alt="mp-skills terminal screenshot" width="600">
+</p>
+
 让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
 
 > [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
