@@ -5,7 +5,7 @@
 ## 前置条件
 
 - Node.js v16+
-- 微信开发者工具（稳定版）
+- 微信开发者工具（Nightly 版本）
 - 全局安装 mp-skills CLI: `npm install -g mp-skills`
 
 ## 快速开始
