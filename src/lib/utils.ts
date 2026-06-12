@@ -12,11 +12,11 @@ export function log(msg: string): void {
 }
 
 export function warn(msg: string): void {
-  console.log(pc.yellow(`  ⚠️  ${msg}`))
+  console.log(pc.yellow(`  !  ${msg}`))
 }
 
 export function ok(msg: string): void {
-  console.log(pc.green(`  ✓ ${msg}`))
+  console.log(`  ok  ${msg}`)
 }
 
 export function title(msg: string): void {

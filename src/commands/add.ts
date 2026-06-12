@@ -6,8 +6,10 @@ import { join, resolve } from 'node:path'
 import { parseSource } from '../lib/source-parser.js'
 import { cloneRepo, cleanupClone, listRemoteSkills } from '../lib/git.js'
 import { installSkill } from '../lib/installer.js'
-import { readLock } from '../lib/lock-file.js'
+import { readLock, readDeployedState } from '../lib/lock-file.js'
 import { log, warn, ok, title } from '../lib/utils.js'
+import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
+import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
 
@@ -80,6 +82,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         }
         log(`\n✅ 已安装 ${count} 个 Skill`)
         trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
+        promptSetupIfNeeded(projectPath)
       } else {
         // 只安装了本地路径本身
         const skillName = opts.skill || skillLocalPath.split('/').pop() || 'unknown'
@@ -90,6 +93,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       }
       log(`\n✅ 已完成！`)
       trackCommand({ command: 'add:install', detail: `local:${sourceInfo.original}` }).catch(() => {})
+      promptSetupIfNeeded(projectPath)
       return
     }
 
@@ -121,6 +125,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       cleanupClone(tmpDir)
       log(`\n✅ 安装完成！`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${opts.skill}` }).catch(() => {})
+      promptSetupIfNeeded(projectPath)
       return
     }
 
@@ -142,6 +147,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       cleanupClone(tmpDir)
       log(`\n✅ 已安装 ${count} 个 Skill`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:all(${count})` }).catch(() => {})
+      promptSetupIfNeeded(projectPath)
       return
     }
 
@@ -187,6 +193,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       cleanupClone(tmpDir)
       log(`\n✅ 已安装 ${selectedNames.length} 个 Skill`)
       trackCommand({ command: 'add:install', detail: `${sourceInfo.repoName}:${selected}` }).catch(() => {})
+      promptSetupIfNeeded(projectPath)
     } else {
       // 非交互模式 → 打印列表
       title(`发现 ${skills.length} 个 Skill:`)
@@ -199,5 +206,26 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
   } catch (err) {
     console.error(`❌ ${(err as Error).message}`)
     process.exit(1)
+  }
+}
+
+/**
+ * 检测是否有未部署的云开发依赖，提示运行 setup
+ */
+function promptSetupIfNeeded(projectPath: string): void {
+  const deployed = readDeployedState(projectPath)
+  const funcs = scanCloudFunctions(projectPath)
+  const collections = scanCollections(projectPath)
+  const shared = scanSharedCollections(projectPath)
+
+  const missingFuncs = funcs.filter((f) => !deployed?.cloudfunctions?.includes(f.name))
+  const allColNames = new Set<string>()
+  for (const c of collections) allColNames.add(c.name)
+  for (const c of shared) allColNames.add(c.name)
+  const missingCols = Array.from(allColNames).filter((c) => !deployed?.collections?.includes(c))
+
+  if (missingFuncs.length > 0 || missingCols.length > 0) {
+    console.log(`\n发现新的云开发依赖，建议运行：`)
+    console.log(`  mp-skills setup`)
   }
 }

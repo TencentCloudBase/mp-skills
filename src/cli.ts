@@ -29,16 +29,16 @@ function track(name: string, fn: (...args: any[]) => Promise<void>) {
 
 program
   .name('mp-skills')
-  .description('CLI for managing WeChat Mini Program AI Skills (wx.modelContext)')
+  .description('微信小程序 AI Skills 管理工具')
   .version(version)
 
-// ── add — 向已有小程序安装 Skill ──────────────────────────
+// ── add — 安装 Skill ─────────────────────────────────
 program
   .command('add <source>')
-  .description('Install a Skill from a registry name, GitHub repo, URL, or local path')
-  .option('--skill <name>', 'Install a specific Skill from the source')
-  .option('--all', 'Install all Skills from the source')
-  .option('-y, --yes', 'Skip confirmation prompts')
+  .description('从注册表、GitHub 仓库、URL 或本地路径安装 Skill')
+  .option('--skill <name>', '安装指定的 Skill')
+  .option('--all', '安装所有 Skill')
+  .option('-y, --yes', '跳过确认提示')
   .action(
     track('add', async (source, opts) => {
       const { addCommand } = await import('./commands/add.js')
@@ -46,12 +46,12 @@ program
     }),
   )
 
-// ── list — 列出已安装或远程可用的 Skill ─────────────────
+// ── list — 列出 Skill ────────────────────────────────
 program
   .command('list')
-  .description('List installed Skills')
-  .option('-r, --remote', 'List remotely available Skills from registry')
-  .option('--all', 'List both installed and remote')
+  .description('列出已安装的 Skill')
+  .option('-r, --remote', '列出远程可用的 Skill')
+  .option('--all', '同时列出已安装和远程')
   .action(
     track('list', async (opts) => {
       const { listCommand } = await import('./commands/list.js')
@@ -59,10 +59,10 @@ program
     }),
   )
 
-// ── find — 搜索远程 Skill ────────────────────────────────
+// ── find — 搜索 Skill ────────────────────────────────
 program
   .command('find [keyword]')
-  .description('Search for Skills in remote repositories')
+  .description('搜索远程仓库中的 Skill')
   .action(
     track('find', async (keyword) => {
       const { findCommand } = await import('./commands/find.js')
@@ -70,11 +70,12 @@ program
     }),
   )
 
-// ── remove — 移除已安装的 Skill ──────────────────────────
+// ── remove — 移除 Skill ──────────────────────────────
 program
   .command('remove <name>')
-  .description('Remove an installed Skill')
-  .option('--all', 'Remove all installed Skills')
+  .description('移除已安装的 Skill')
+  .option('--all', '移除全部 Skill')
+  .option('-y, --yes', '跳过确认')
   .action(
     track('remove', async (name, opts) => {
       const { removeCommand } = await import('./commands/remove.js')
@@ -82,10 +83,10 @@ program
     }),
   )
 
-// ── create — 在已有项目中创建一个新的 Skill ───────────────
+// ── create — 创建新 Skill ────────────────────────────
 program
   .command('create [name]')
-  .description('Create a new Skill skeleton in the current project')
+  .description('在当前项目中创建新的 Skill 骨架')
   .action(
     track('create', async (name) => {
       const { createCommand } = await import('./commands/create.js')
@@ -93,10 +94,10 @@ program
     }),
   )
 
-// ── new — 创建一个新的小程序项目 ──────────────────────────
+// ── new — 创建新项目 ─────────────────────────────────
 program
   .command('new <name>')
-  .description('Create a new mini-program project with AI Skill support')
+  .description('创建带 AI Skill 支持的小程序项目')
   .action(
     track('new', async (name) => {
       const { newCommand } = await import('./commands/new.js')
@@ -104,10 +105,10 @@ program
     }),
   )
 
-// ── update — 更新已安装的 Skill ──────────────────────────
+// ── update — 更新 Skill ─────────────────────────────
 program
   .command('update [skills...]')
-  .description('Check and update installed Skills')
+  .description('检查并更新已安装的 Skill')
   .action(
     track('update', async (skills) => {
       const { updateCommand } = await import('./commands/update.js')
@@ -115,10 +116,10 @@ program
     }),
   )
 
-// ── validate / execute / render ── 质检 ──────────────────
+// ── validate / execute / render ── 校验 ─────────────
 program
   .command('validate [project-dir]')
-  .description('Run static validation on Skills in the project')
+  .description('对项目中 Skills 进行静态校验')
   .action(
     track('validate', async (dir) => {
       const { validateCommand } = await import('./commands/validate.js')
@@ -128,10 +129,10 @@ program
 
 program
   .command('execute')
-  .description('Execute an atomic interface in a Skill')
-  .requiredOption('--name <api-name>', 'API name to execute')
-  .option('--args <json>', 'Arguments as JSON string')
-  .option('--project <path>', 'Project path', '.')
+  .description('执行 Skill 的原子接口')
+  .requiredOption('--name <api-name>', '接口名称')
+  .option('--args <json>', 'JSON 格式参数')
+  .option('--project <path>', '项目路径', '.')
   .action(
     track('execute', async (opts) => {
       const { executeCommand } = await import('./commands/execute.js')
@@ -141,20 +142,57 @@ program
 
 program
   .command('render')
-  .description('Render a Skill component')
-  .requiredOption('--name <api-name>', 'API name to render')
-  .option('--project <path>', 'Project path', '.')
+  .description('渲染 Skill 组件')
+  .requiredOption('--name <api-name>', '接口名称')
+  .option('--project <path>', '项目路径', '.')
   .action(
     track('render', async (opts) => {
       const { renderCommand } = await import('./commands/render.js')
       await renderCommand(opts)
     }),
   )
-// ── gen — 根据已有小程序项目生成 Skills ──────────────────
+// ── setup — 一站式环境搭建 ─────────────────────────
+program
+  .command('setup [project-dir]')
+  .description('一站式环境搭建：聚合云函数、创建数据库集合、检查服务')
+  .option('--cloudfunctions', '仅处理云函数')
+  .option('--database', '仅处理数据库')
+  .option('--services', '仅检查服务')
+  .option('--dry-run', '预览，不实际执行')
+  .action(
+    track('setup', async (dir, opts) => {
+      const { setupCommand } = await import('./commands/setup.js')
+      await setupCommand(dir || '.', opts)
+    }),
+  )
+
+// ── status — 查看项目状态 ─────────────────────────
+program
+  .command('status [project-dir]')
+  .description('查看云函数、数据库、服务的状态差异')
+  .action(
+    track('status', async (dir) => {
+      const { statusCommand } = await import('./commands/status.js')
+      await statusCommand(dir || '.')
+    }),
+  )
+
+// ── doctor — 健康检查 ─────────────────────────────
+program
+  .command('doctor [project-dir]')
+  .description('健康检查：检测云函数联通性、数据库集合、服务配置')
+  .action(
+    track('doctor', async (dir) => {
+      const { doctorCommand } = await import('./commands/doctor.js')
+      await doctorCommand(dir || '.')
+    }),
+  )
+
+// ── gen — 根据已有项目生成 Skill ──────────────────────
 program
   .command('gen <project-dir>')
-  .description('分析已有小程序项目，调用 opencode 生成符合 wx.modelContext 规范的 Skill 分包')
-  .option('--env <envId>', 'CloudBase 环境 ID（透传给下游）', '')
+  .description('分析已有小程序，生成符合规范的 Skill')
+  .option('--env <envId>', 'CloudBase 环境 ID', '')
   .requiredOption('--output <dir>', '生成的 Skill 文件输出目录')
   .option('--scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
   .option('--model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')

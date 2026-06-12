@@ -3,7 +3,7 @@
 
 import { existsSync, readdirSync, readFileSync, Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { log, title } from '../lib/utils.js'
+import { log } from '../lib/utils.js'
 
 interface ListOptions {
   remote?: boolean
@@ -16,26 +16,26 @@ export async function listCommand(opts: ListOptions): Promise<void> {
 
   if (!opts.remote || opts.all) {
     const skillsDir = join(projectPath, mpRoot, 'skills')
-    title('📋 本地已安装:')
+    console.log('已安装的 Skill：')
     if (existsSync(skillsDir)) {
       const entries = readdirSync(skillsDir, { withFileTypes: true }).filter(
         (e: Dirent) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'mcp.json')),
       )
       if (entries.length === 0) {
-        log('   暂无 Skill')
+        console.log('  （无）')
       }
       for (const entry of entries) {
-        log(`  ${entry.name}`)
+        console.log(`  ${entry.name}`)
       }
     } else {
-      log('   暂无 Skill')
+      console.log('  （无）')
     }
   }
 
   if (opts.remote || opts.all) {
-    title('\n📡 从远程仓库安装:')
-    log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills')
-    log('  mp-skills add wechat-miniprogram/ai-mode-skills')
+    console.log('')
+    console.log('远程安装：')
+    console.log('  mp-skills add TencentCloudBase/awesome-miniprogram-skills')
   }
 }
 
