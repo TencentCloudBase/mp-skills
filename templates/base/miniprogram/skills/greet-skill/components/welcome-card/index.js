@@ -17,6 +17,31 @@ Component({
     usageTip: '',
   },
 
+  lifetimes: {
+    created() {
+      const { NotificationType } = wx.modelContext
+      const modelCtx = wx.modelContext.getContext(this)
+      modelCtx.on(NotificationType.Result, (data) => {
+        const sc = (data && data.result && data.result.structuredContent) || {}
+        this.setData({
+          welcomeMsg: sc.welcomeMsg || '你好！欢迎体验 AI 小程序～',
+          quickActions: sc.quickActions || [],
+          recommendedSkills: sc.recommendedSkills || [],
+          usageTip: sc.usageTip || '',
+        })
+      })
+
+      // 溢出监听
+      const viewCtx = wx.modelContext.getViewContext(this)
+      viewCtx.on(NotificationType.Overflow, (event) => {
+        console.info('[ai-mode] welcome-card overflow monitor=on')
+        if (event.overflowHeight > 0) {
+          console.info('[ai-mode] welcome-card overflow overflowed=true', JSON.stringify(event))
+        }
+      })
+    },
+  },
+
   methods: {
     render() {
       const d = this.properties.data || {}
