@@ -120,7 +120,7 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
   }
 
   // ── official 模式：直接 spawn wxa-skills-eval CLI ──
-  const args = [evalCliPath, 'run', '-p', targetPath]
+  const args = [evalCliPath, 'run', '-p', projectPath]
 
   if (opts.cases) {
     args.push('-c', opts.cases)
@@ -135,7 +135,7 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
   }
 
   title('🚀 启动 Skills 评估（official 模式）...')
-  kv('项目路径', targetPath)
+  kv('项目路径', projectPath)
   kv('评估 CLI', evalCliPath)
   if (opts.env) kv('TCB 环境', opts.env)
   kv('LLM 端点', creds.baseUrl)
@@ -197,14 +197,14 @@ async function runAgentMode(ctx: {
 
   const prompt = buildEvalPrompt({
     evalCliPath,
-    targetPath,
+    projectPath,
     cases: opts.cases,
     skill: opts.skill,
     headless: opts.headless,
   })
 
   title('🤖 启动 agent 驱动评估...')
-  kv('项目路径', targetPath)
+  kv('项目路径', projectPath)
   kv('评估 CLI', evalCliPath)
   kv('skill 目录', skillsRoot)
   if (opts.env) kv('TCB 环境', opts.env)
@@ -273,12 +273,12 @@ function buildEvalSystemPrompt(args: { evalSkillName: string }): string {
  */
 function buildEvalPrompt(args: {
   evalCliPath: string
-  targetPath: string
+  projectPath: string
   cases?: string
   skill?: string
   headless?: boolean
 }): string {
-  const { evalCliPath, targetPath, cases, skill, headless } = args
+  const { evalCliPath, projectPath, cases, skill, headless } = args
   const caseCount = cases ?? '1'
 
   const skillScopeLine = skill
@@ -290,7 +290,7 @@ function buildEvalPrompt(args: {
     : '- 运行模式：默认（启动 Web UI，不要加 `--headless`）'
 
   const cmd = [
-    `node "${evalCliPath}" run -p "${targetPath}"`,
+    `node "${evalCliPath}" run -p "${projectPath}"`,
     `-c ${caseCount}`,
     skill ? `--skills ${skill}` : '',
     headless ? '--headless' : '',
@@ -302,7 +302,7 @@ function buildEvalPrompt(args: {
 
 <params>
 - 官方评测 CLI 入口（绝对路径）：\`${evalCliPath}\`
-- 被评测的小程序项目（绝对路径，传给 \`-p\`）：\`${targetPath}\`
+- 被评测的小程序项目（绝对路径，传给 \`-p\`）：\`${projectPath}\`
 - 测试用例数（\`-c\`）：${caseCount}
 ${skillScopeLine}
 ${runModeLine}
