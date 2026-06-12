@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "dev": "node dist/cli.cjs",
+    "dev": "node --no-deprecation dist/cli.cjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",

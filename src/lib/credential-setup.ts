@@ -11,7 +11,8 @@
 
 import Enquirer from 'enquirer'
 import Table from 'cli-table3'
-import type { LlmCredentials } from './llm-credentials.js'
+import type { LlmCredentials, Preset } from './llm-credentials.js'
+import { PRESETS } from './llm-credentials.js'
 import { colors, log, warn, ok, title, kv } from './utils.js'
 import {
   ensureLogin,
@@ -24,22 +25,6 @@ import {
   type CloudbaseCredential,
   type CloudbaseModel,
 } from './cloudbase.js'
-
-// ── 预设 provider 表 ──
-
-export interface Preset {
-  key: string
-  label: string
-  baseUrl: string
-  defaultModel: string
-}
-
-export const PRESETS: Preset[] = [
-  { key: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-v4-flash' },
-  { key: 'glm', label: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', defaultModel: 'glm-5.1' },
-  { key: 'kimi', label: 'Kimi（Moonshot）', baseUrl: 'https://api.moonshot.cn/v1', defaultModel: 'kimi-k2.6' },
-  { key: 'minimax', label: 'MiniMax', baseUrl: 'https://api.minimaxi.com/v1', defaultModel: 'minimax-m2.7' },
-]
 
 // ── prompt 封装 ──
 

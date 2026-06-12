@@ -36,7 +36,7 @@ program
 program
   .command('add <source>')
   .description('从注册表、GitHub 仓库、URL 或本地路径安装 Skill')
-  .option('--skill <name>', '安装指定的 Skill')
+  .option('-s, --skill <name>', '安装指定的 Skill')
   .option('--all', '安装所有 Skill')
   .option('-y, --yes', '跳过确认提示')
   .action(
@@ -130,9 +130,9 @@ program
 program
   .command('execute')
   .description('执行 Skill 的原子接口')
-  .requiredOption('--name <api-name>', '接口名称')
-  .option('--args <json>', 'JSON 格式参数')
-  .option('--project <path>', '项目路径', '.')
+  .requiredOption('-n, --name <api-name>', '接口名称')
+  .option('-a, --args <json>', 'JSON 格式参数')
+  .option('-p, --project <path>', '项目路径', '.')
   .action(
     track('execute', async (opts) => {
       const { executeCommand } = await import('./commands/execute.js')
@@ -143,8 +143,8 @@ program
 program
   .command('render')
   .description('渲染 Skill 组件')
-  .requiredOption('--name <api-name>', '接口名称')
-  .option('--project <path>', '项目路径', '.')
+  .requiredOption('-n, --name <api-name>', '接口名称')
+  .option('-p, --project <path>', '项目路径', '.')
   .action(
     track('render', async (opts) => {
       const { renderCommand } = await import('./commands/render.js')
@@ -155,9 +155,9 @@ program
 program
   .command('setup [project-dir]')
   .description('一站式环境搭建：聚合云函数、创建数据库集合、检查服务')
-  .option('--cloudfunctions', '仅处理云函数')
-  .option('--database', '仅处理数据库')
-  .option('--services', '仅检查服务')
+  .option('-f, --cloud-functions', '仅处理云函数')
+  .option('-d, --database', '仅处理数据库')
+  .option('-s, --services', '仅检查服务')
   .option('--dry-run', '预览，不实际执行')
   .option('--env-id <id>', '云开发环境 ID（未指定则从项目配置读取）')
   .action(
@@ -193,11 +193,13 @@ program
 program
   .command('gen <project-dir>')
   .description('分析已有小程序，启动 agent 多轮生成符合规范的 Skill（默认交互式，Ctrl+C 退出）')
-  .option('--env <envId>', 'CloudBase 环境 ID', '')
-  .requiredOption('--output <dir>', '生成的 Skill 文件输出目录')
-  .option('--scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
-  .option('--model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')
-  .option('--non-interactive', '非交互模式：一次性跑完，适合脚本 / CI', false)
+  .option('-e, --env <envId>', 'CloudBase 环境 ID', '')
+  .option('-o, --output <dir>', '生成的 Skill 文件输出目录（默认使用小程序的 miniprogram root）')
+  .option('-s, --scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
+  .option('-m, --model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')
+  .option('-p, --provider <name>', 'LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model')
+  .option('-q, --query <text>', '本轮诉求；在已有产物上迭代时尤其有用（如：xxx 接口有 bug）')
+  .option('-n, --non-interactive', '非交互模式：一次性跑完，适合脚本 / CI', false)
   .action(async (projectDir, opts) => {
     const { genCommand } = await import('./commands/gen.js')
     await genCommand(projectDir, opts)
@@ -207,16 +209,16 @@ program
 program
   .command('eval <project-dir>')
   .description('对已有 Skills 项目启动端到端质量评估（需先安装 wxa-skills-eval）')
-  .option('--env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
+  .option('-e, --env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
   .option('-c, --cases <n>', '生成的测试用例数', '1')
-  .option('--skill <name>', '只评估指定 Skill（默认评估全部）')
+  .option('-s, --skill <name>', '只评估指定 Skill（默认评估全部）')
   .option('--headless', '无界面模式，适合 CI 环境', false)
   .option('--mode <mode>', '评估模式：official（直接调官方 CLI）| agent（自主调官方 CLI）', 'official')
   .option(
-    '--provider <name>',
+    '-p, --provider <name>',
     `LLM 提供方预设（deepseek / glm / kimi / minimax）；预填 baseUrl 与默认 model，仍需配置 OPENAI_API_KEY`,
   )
-  .option('--model <name>', '模型名，覆盖 --provider 预设与 OPENAI_MODEL 环境变量')
+  .option('-m, --model <name>', '模型名，覆盖 --provider 预设与 OPENAI_MODEL 环境变量')
   .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖 OPENAI_API_KEY 环境变量')
   .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与 OPENAI_BASE_URL 环境变量')
   .action(async (projectDir, opts) => {

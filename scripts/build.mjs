@@ -51,7 +51,7 @@ await esbuild.build({
   outfile: 'dist/cli.cjs',
   external: externals,
   banner: {
-    js: `#!/usr/bin/env node
+    js: `#!/usr/bin/env node --no-deprecation
 // Shim import.meta.url for CJS — esbuild replaces the reference at build time.
 // __filename is the absolute path to the bundled file, so "file://" + __filename
 // produces a valid file URL that createRequire() and fileURLToPath() can consume.

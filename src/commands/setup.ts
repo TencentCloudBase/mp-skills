@@ -13,7 +13,7 @@ import { ensureLogin } from '../lib/cloudbase.js'
 import type { DeployedState } from '../types.js'
 
 interface SetupOptions {
-  cloudfunctions?: boolean
+  cloudFunctions?: boolean
   database?: boolean
   services?: boolean
   dryRun?: boolean
@@ -22,12 +22,12 @@ interface SetupOptions {
 
 export async function setupCommand(projectDir: string, opts: SetupOptions): Promise<void> {
   const projectPath = resolve(projectDir)
-  const runAll = !opts.cloudfunctions && !opts.database && !opts.services
+  const runAll = !opts.cloudFunctions && !opts.database && !opts.services
 
   console.log('mp-skills setup')
   console.log('')
 
-  if (runAll || opts.cloudfunctions) {
+  if (runAll || opts.cloudFunctions) {
     const steps = runAll ? '1/3' : '1/1'
     await setupCloudFunctions(projectPath, opts.dryRun || false, steps)
   }

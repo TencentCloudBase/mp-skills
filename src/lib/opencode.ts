@@ -41,11 +41,12 @@ export function resolveOpencodeBin(): string | null {
  *   - 可选注入 skills.paths，让 opencode 通过标准机制自动发现指定目录下的 skill
  *     （目录约定：每个 skill 一个子目录，子目录内含 SKILL.md，opencode 从 paths 列表
  *     的每个目录扫描 *\/SKILL.md。绝对路径与 ~ 都支持）
- *   - 可选注入一个自定义 agent（含 system prompt），并设为 default_agent
+ *   - 可选覆盖主 agent（build）的 system prompt——直接定制主对话上下文，
+ *     而不是新建 subagent（subagent 有独立上下文/工具语义，不适合做主流程）
  */
 export function buildOpencodeConfig(
   creds: LlmCredentials,
-  opts?: { skillPaths?: string[]; agent?: { name: string; prompt: string } },
+  opts?: { skillPaths?: string[]; systemPrompt?: string },
 ): string {
   const config: Record<string, any> = {
     provider: {
@@ -66,15 +67,13 @@ export function buildOpencodeConfig(
   if (opts?.skillPaths && opts.skillPaths.length > 0) {
     config.skills = { paths: opts.skillPaths }
   }
-  if (opts?.agent) {
+  if (opts?.systemPrompt) {
+    // 覆盖默认主 agent（build）的 prompt，定制主对话的 system prompt
     config.agent = {
-      [opts.agent.name]: {
-        description: opts.agent.name,
-        model: opencodeModelArg(creds),
-        prompt: opts.agent.prompt,
+      build: {
+        prompt: opts.systemPrompt,
       },
     }
-    config.default_agent = opts.agent.name
   }
   return JSON.stringify(config)
 }

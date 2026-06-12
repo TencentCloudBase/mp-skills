@@ -17,6 +17,53 @@ export interface LlmCredentials {
   model: string
 }
 
+// ── Provider 预设 ──
+
+export interface Preset {
+  key: string
+  label: string
+  baseUrl: string
+  defaultModel: string
+}
+
+export const PRESETS: Preset[] = [
+  { key: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-v4-flash' },
+  { key: 'glm', label: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', defaultModel: 'glm-5.1' },
+  { key: 'kimi', label: 'Kimi（Moonshot）', baseUrl: 'https://api.moonshot.cn/v1', defaultModel: 'kimi-k2.6' },
+  { key: 'minimax', label: 'MiniMax', baseUrl: 'https://api.minimaxi.com/v1', defaultModel: 'minimax-m2.7' },
+]
+
+/**
+ * 应用 provider 预设 + 显式参数覆盖到 process.env。
+ * 优先级（由低到高）：
+ *   环境变量 / .env  <  --provider 预设  <  --openai-base-url / --openai-api-key / --model
+ *
+ * 调用方应在 `ensureLlmCredentials()` 之前调用，让预设/覆盖值先写入环境变量，
+ * 之后 ensureLlmCredentials 读取到的即为最终优先级结果。
+ */
+export function applyProviderPreset(opts: {
+  provider?: string
+  baseUrl?: string
+  apiKey?: string
+  model?: string
+}): void {
+  // 1. provider 预设：只在环境变量未设置时填空
+  if (opts.provider) {
+    const preset = PRESETS.find((p) => p.key === opts.provider)
+    if (!preset) {
+      warn(`未知 provider "${opts.provider}"，可选值：${PRESETS.map((p) => p.key).join(' / ')}`)
+    } else {
+      if (!process.env.OPENAI_BASE_URL) process.env.OPENAI_BASE_URL = preset.baseUrl
+      if (!process.env.OPENAI_MODEL) process.env.OPENAI_MODEL = preset.defaultModel
+    }
+  }
+
+  // 2. 显式参数：无条件覆盖（最高优先级）
+  if (opts.baseUrl) process.env.OPENAI_BASE_URL = opts.baseUrl
+  if (opts.apiKey) process.env.OPENAI_API_KEY = opts.apiKey
+  if (opts.model) process.env.OPENAI_MODEL = opts.model
+}
+
 /**
  * 把任意 BaseURL 规范化为 OpenAI 兼容的 `.../v1` 形式：
  *   https://x/                 -> https://x/v1

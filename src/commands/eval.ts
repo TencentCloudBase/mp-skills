@@ -9,9 +9,8 @@ import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { colors, kv, log, ok, spinner, title, warn, resolveMiniprogramRoot } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
-import { ensureLlmCredentials, type LlmCredentials } from '../lib/llm-credentials.js'
+import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
-import { PRESETS } from '../lib/credential-setup.js'
 import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencode } from '../lib/opencode.js'
 
 interface EvalOptions {
@@ -84,7 +83,12 @@ export async function evalCommand(projectDir: string, opts: EvalOptions): Promis
 
   // 若指定了 --provider，将对应预设的 baseUrl / defaultModel 注入 process.env；
   // --openai-base-url / --openai-api-key / --model 显式参数优先级更高，最后覆盖。
-  applyProviderPreset(opts.provider, opts.openaiBaseUrl, opts.openaiApiKey, opts.model)
+  applyProviderPreset({
+    provider: opts.provider,
+    baseUrl: opts.openaiBaseUrl,
+    apiKey: opts.openaiApiKey,
+    model: opts.model,
+  })
   const creds = await ensureLlmCredentials({ defaultModel: 'gpt-4o' })
 
   // 检查 .env 文件（wxa-skills-eval 需要）
@@ -189,6 +193,8 @@ async function runAgentMode(ctx: {
   // opencode 会扫描该目录下的所有子目录，发现含 SKILL.md 的注册为 skill。
   const skillsRoot = dirname(evalSkillDir)
 
+  const systemPrompt = buildEvalSystemPrompt({ evalSkillName: EVAL_SKILL_NAME })
+
   const prompt = buildEvalPrompt({
     evalCliPath,
     targetPath,
@@ -208,10 +214,10 @@ async function runAgentMode(ctx: {
   if (opts.cases) kv('测试用例数', opts.cases)
   log('')
 
-  // 注入 BYOK provider + skills.paths（让 opencode 发现 wxa-skills-eval）
+  // 注入 BYOK provider + skills.paths（让 opencode 发现 wxa-skills-eval）+ 主 agent system prompt
   const childEnv: NodeJS.ProcessEnv = {
     ...env,
-    OPENCODE_CONFIG_CONTENT: buildOpencodeConfig(creds, { skillPaths: [skillsRoot] }),
+    OPENCODE_CONFIG_CONTENT: buildOpencodeConfig(creds, { skillPaths: [skillsRoot], systemPrompt }),
   }
 
   // --dir 设为评测工具所在目录，便于 opencode 用相对路径调用官方 CLI；
@@ -226,6 +232,7 @@ async function runAgentMode(ctx: {
     '--format',
     'json',
     '--dangerously-skip-permissions',
+    '--print-logs',
   ]
 
   const exitCode = await runOpencode(opencodeBin, args, childEnv)
@@ -239,10 +246,30 @@ async function runAgentMode(ctx: {
 }
 
 /**
- * 组装发给 agent 的评测 prompt。
- * 工作流规范不再拼入 prompt——而是通过 OPENCODE_CONFIG_CONTENT.skills.paths
- * 把 wxa-skills-eval 注册为 opencode 的标准 skill，agent 会按需自行调用。
- * 此处只下达任务、关键参数与执行要求。
+ * 构建注入给主 agent（build）的 system prompt。
+ * 使用 tag 标记分区：只规定「角色 / 能力 / 约束」，不固定执行步骤。
+ */
+function buildEvalSystemPrompt(args: { evalSkillName: string }): string {
+  return `你是微信小程序 Skill 评测专家，负责对已安装 Skill 的小程序项目执行端到端质量评估。
+
+<skills>
+- \`${args.evalSkillName}\`：Skill 评测规范与 CLI 调用指引。
+执行任务前先阅读 \`${args.evalSkillName}\` 的 SKILL.md 了解评测流程与 CLI 用法；实际评测由该 skill 中定义的官方 CLI 完成。
+</skills>
+
+<system-reminder>
+# 执行要求
+1. 先调用 \`${args.evalSkillName}\` skill 获取完整评测规范
+2. 用 Bash 工具运行官方 CLI 发起评测
+3. 关注 CLI 输出：若报缺依赖/缺配置/缺 DevTools，按 SKILL.md 的排错指引处理后重试
+4. 评测完成后，用文字总结：通过了哪些用例、失败用例的缺陷归因、报告产物路径
+5. 不要询问用户确认，自主推进
+</system-reminder>`
+}
+
+/**
+ * 组装 agent 的初始任务 prompt。
+ * 只含动态参数 + 建议命令，角色与执行约束已在 system prompt 中定义。
  */
 function buildEvalPrompt(args: {
   evalCliPath: string
@@ -251,48 +278,42 @@ function buildEvalPrompt(args: {
   skill?: string
   headless?: boolean
 }): string {
-  const parts: string[] = []
-  parts.push(
-    '你是小程序 Skill 评测专家。请调用名为 `wxa-skills-eval` 的 skill（已通过 opencode 标准 skill 机制注册）阅读其 SKILL.md 规范，然后按规范执行下面的评测任务。',
-  )
-  parts.push('')
-  parts.push('# 任务：对已安装 Skill 的小程序项目执行端到端评测')
-  parts.push('')
-  parts.push('## 执行方式')
-  parts.push(
-    '实际评测由官方 CLI 完成。你需要按 wxa-skills-eval skill 的 SKILL.md 规范，用 Bash 工具调用官方 CLI 来发起评测，并根据输出判断是否成功、必要时按 SKILL.md 的续跑/排错指引重试。',
-  )
-  parts.push('')
-  parts.push('## 关键参数')
-  parts.push(`- 官方评测 CLI 入口（绝对路径）：\`${args.evalCliPath}\``)
-  parts.push(`- 被评测的小程序项目（绝对路径，传给 \`-p\`）：\`${args.targetPath}\``)
-  parts.push(`- 测试用例数（\`-c\`）：${args.cases ?? '1'}`)
-  if (args.skill) {
-    parts.push(`- 仅评测指定 Skill（\`--skills\`）：${args.skill}`)
-  } else {
-    parts.push('- 评测全部 Skill（不传 `--skills`）')
-  }
-  parts.push(
-    `- 运行模式：${args.headless ? 'headless（CI，加 `--headless`）' : '默认（启动 Web UI，不要加 `--headless`）'}`,
-  )
-  parts.push('- LLM 凭据已通过环境变量 `WXA_SKILL_EVAL_LLM_*` 注入，无需在命令行重复传入。')
-  parts.push('')
-  parts.push('## 建议命令')
-  const cmdParts = [`node "${args.evalCliPath}" run -p "${args.targetPath}"`]
-  cmdParts.push(`-c ${args.cases ?? '1'}`)
-  if (args.skill) cmdParts.push(`--skills ${args.skill}`)
-  if (args.headless) cmdParts.push('--headless')
-  parts.push('```bash')
-  parts.push(cmdParts.join(' '))
-  parts.push('```')
-  parts.push('')
-  parts.push('## 执行要求')
-  parts.push('1. 先调用 `wxa-skills-eval` skill 获取完整规范')
-  parts.push('2. 用 Bash 工具运行上面的命令发起评测')
-  parts.push('3. 关注 CLI 输出：若报缺依赖/缺配置/缺 DevTools，按 SKILL.md 的排错指引处理后重试')
-  parts.push('4. 评测完成后，用文字总结：通过了哪些用例、失败用例的缺陷归因、报告产物路径')
-  parts.push('5. 不要询问用户确认，自主推进')
-  return parts.join('\n')
+  const { evalCliPath, targetPath, cases, skill, headless } = args
+  const caseCount = cases ?? '1'
+
+  const skillScopeLine = skill
+    ? `- 仅评测指定 Skill（\`--skills\`）：${skill}`
+    : '- 评测全部 Skill（不传 `--skills`）'
+
+  const runModeLine = headless
+    ? '- 运行模式：headless（CI，加 `--headless`）'
+    : '- 运行模式：默认（启动 Web UI，不要加 `--headless`）'
+
+  const cmd = [
+    `node "${evalCliPath}" run -p "${targetPath}"`,
+    `-c ${caseCount}`,
+    skill ? `--skills ${skill}` : '',
+    headless ? '--headless' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return `# 任务：对已安装 Skill 的小程序项目执行端到端评测
+
+<params>
+- 官方评测 CLI 入口（绝对路径）：\`${evalCliPath}\`
+- 被评测的小程序项目（绝对路径，传给 \`-p\`）：\`${targetPath}\`
+- 测试用例数（\`-c\`）：${caseCount}
+${skillScopeLine}
+${runModeLine}
+- LLM 凭据已通过环境变量 \`WXA_SKILL_EVAL_LLM_*\` 注入，无需在命令行重复传入。
+</params>
+
+## 建议命令
+\`\`\`bash
+${cmd}
+\`\`\`
+`
 }
 
 /**
@@ -417,32 +438,3 @@ function syncCredsToEvalEnv(evalSkillDir: string, creds: LlmCredentials): void {
   })
 }
 
-/**
- * 优先级（由低到高）：
- *   环境变量 / .env  <  --provider 预设  <  --openai-base-url / --openai-api-key / --model
- *
- * 实现方式：先把预设写入 process.env（仅在环境变量未设置时），
- * 再把显式命令行参数无条件覆盖写入——这样 ensureLlmCredentials 读到的始终是最终优先级。
- */
-function applyProviderPreset(
-  provider: string | undefined,
-  baseUrl: string | undefined,
-  apiKey: string | undefined,
-  model: string | undefined,
-): void {
-  // 1. provider 预设：只填空缺
-  if (provider) {
-    const preset = PRESETS.find((p) => p.key === provider)
-    if (!preset) {
-      warn(`未知 provider "${provider}"，可选值：${PRESETS.map((p) => p.key).join(' / ')}`)
-    } else {
-      if (!process.env.OPENAI_BASE_URL) process.env.OPENAI_BASE_URL = preset.baseUrl
-      if (!process.env.OPENAI_MODEL) process.env.OPENAI_MODEL = preset.defaultModel
-    }
-  }
-
-  // 2. 显式参数：无条件覆盖（最高优先级）
-  if (baseUrl) process.env.OPENAI_BASE_URL = baseUrl
-  if (apiKey) process.env.OPENAI_API_KEY = apiKey
-  if (model) process.env.OPENAI_MODEL = model
-}

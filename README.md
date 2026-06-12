@@ -17,7 +17,7 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
 # 安装指定的 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
 
 # 安装仓库中所有 Skill
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
@@ -56,7 +56,7 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --list
 
 # 安装指定 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
 
 # 安装全部
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
@@ -127,12 +127,12 @@ Skill 被创建在 `miniprogram/skills/<name>/`（根据 `project.config.json` �
 ```bash
 npx mp-skills create my-app
 cd my-app
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
 ```
 
 ### gen
 
-分析一个**已有的**小程序项目，调用 [opencode](https://github.com/sst/opencode) 自动生成符合 `wx.modelContext` 规范的 Skill 分包。生成过程**只读源项目、不修改**，所有产物写入 `--output` 目录。
+分析一个**已有的**小程序项目，调用 [opencode](https://github.com/sst/opencode) 自动生成符合 `wx.modelContext` 规范的 Skill 分包。gen 是一个「面向 Skill 生成任务的 agent 代理」：预置好 system prompt 与 `wxa-skills-generate` / `wxa-skills-validate` 两个官方 skill，默认进入**交互式多轮会话**，模型自主「读项目 → 生成 → 校验 → 修复」，随时 `Ctrl+C` 退出。生成过程**只读源项目、不修改**，产物默认写入小程序的 miniprogram root，也可通过 `-o` 指定输出目录。
 
 ```bash
 # 未配置凭证时会弹出交互式向导（见下方「LLM 凭证」）；
@@ -142,19 +142,38 @@ export OPENAI_API_KEY=sk-xxxx
 export OPENAI_MODEL=deepseek-chat
 
 npx mp-skills gen ./my-miniprogram \
-  --output ./generated \
-  --scenario "咖啡点单、订单管理"
+  -o ./generated \
+  -s "咖啡点单、订单管理"
 ```
 
-| 选项                | 说明                                                 |
-| ------------------- | ---------------------------------------------------- |
-| `--output <dir>`    | （必填）生成的 Skill 文件输出目录                    |
-| `--scenario <desc>` | 业务场景描述，帮助模型聚焦（如：商品检索、订单管理） |
-| `--model <name>`    | 模型名，默认取 `OPENAI_MODEL`，回退 `gpt-4o`         |
-| `--env <envId>`     | CloudBase 环境 ID（透传给下游，可选）                |
-| `--max-turns <n>`   | Agent 最大轮次（默认 30）                            |
+| 选项                    | 说明                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| `-o, --output <dir>`    | 输出目录（默认使用小程序的 miniprogram root）                        |
+| `-s, --scenario <desc>` | 业务场景描述，帮助模型聚焦（如：商品检索、订单管理）                 |
+| `-q, --query <text>`    | 本轮诉求；在已有产物上迭代时尤其有用（如：`xxx 接口返回字段不对`）   |
+| `-p, --provider <name>` | LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model |
+| `-m, --model <name>`    | 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL`，回退 `gpt-4o`       |
+| `-e, --env <envId>`     | CloudBase 环境 ID（透传给下游，可选）                                |
+| `-n, --non-interactive` | 非交互模式：一次性跑完，适合脚本 / CI                                |
 
 源项目的 `app.json` 位置自动识别：优先读 `project.config.json` 的 `miniprogramRoot`，否则回退根目录或 `miniprogram/`。
+
+**在已有 Skill 上迭代**：生成关闭后去测试，发现问题再回来继续改——直接对同一输出目录再跑一次 gen 即可。gen 会自动检测输出目录里已有的 Skill 产物，进入「增量迭代」模式（在已有产物上改，不推倒重来）。配合 `-q` 直接下达本轮诉求：
+
+```bash
+# 第一次：从源项目生成（输出到 miniprogram root，无需 -o）
+npx mp-skills gen ./my-miniprogram
+
+# 或指定输出目录（继续在已有产物上迭代）
+npx mp-skills gen ./my-miniprogram -o ./generated
+
+# …去测试，发现某接口有 bug…
+
+# 再次迭代：在 ./generated 已有产物上修复指定问题
+npx mp-skills gen ./my-miniprogram -o ./generated \
+  -q "order-skill 的 createOrder 接口缺少 amount 字段"
+```
+
 
 ### eval
 
@@ -165,16 +184,24 @@ export OPENAI_BASE_URL=https://api.deepseek.com/v1
 export OPENAI_API_KEY=sk-xxxx
 export OPENAI_MODEL=deepseek-chat
 
-npx mp-skills eval ./my-miniprogram --cases 3
+# 默认 official 模式
+npx mp-skills eval ./my-miniprogram -c 3
+
+# 使用 provider 预设，无需手动设置环境变量中的模型信息
+npx mp-skills eval ./my-miniprogram -p deepseek -m deepseek-v4-flash -c 3
 ```
 
-| 选项              | 说明                                                                                                               |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `--env <envId>`   | CloudBase 环境 ID。**BYOK 模式下可省略**——key 直接来自 `OPENAI_*`，无需用 env 去网关换取；仅在需要透传给下游时填写 |
-| `-c, --cases <n>` | 生成的测试用例数（默认 1）                                                                                         |
-| `--skill <name>`  | 只评估指定 Skill（默认评估全部）                                                                                   |
-| `--headless`      | 无界面模式，适合 CI 环境                                                                                           |
-| `--mode <mode>`   | 评估模式，`official`（默认）或 `agent`                                                                             |
+| 选项                         | 说明                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `-e, --env <envId>`          | CloudBase 环境 ID。**BYOK 模式下可省略**——仅在需要透传给下游时填写                    |
+| `-c, --cases <n>`            | 生成的测试用例数（默认 1）                                                           |
+| `-s, --skill <name>`         | 只评估指定 Skill（默认评估全部）                                                     |
+| `--headless`                 | 无界面模式，适合 CI 环境                                                             |
+| `--mode <mode>`              | 评估模式，`official`（默认）或 `agent`                                               |
+| `-p, --provider <name>`      | LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model         |
+| `-m, --model <name>`         | 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL` 环境变量                             |
+| `--openai-api-key <key>`     | OpenAI 兼容 API Key，覆盖 `OPENAI_API_KEY` 环境变量                                  |
+| `--openai-base-url <url>`    | OpenAI 兼容 Base URL，覆盖 `--provider` 预设与 `OPENAI_BASE_URL` 环境变量            |
 
 **两种评估模式**（实际评测都由官方 `wxa-skills-eval` CLI 执行）：
 
@@ -183,7 +210,7 @@ npx mp-skills eval ./my-miniprogram --cases 3
 
 ```bash
 # agent 模式
-npx mp-skills eval ./my-miniprogram --mode agent --cases 3
+npx mp-skills eval ./my-miniprogram --mode agent -c 3
 ```
 
 > 两种模式都依赖微信开发者工具（官方 CLI 的硬性要求）。
