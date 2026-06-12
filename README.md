@@ -198,37 +198,40 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 
 ### create
 
-在当前小程序项目中创建一个新的 Skill。**默认走本地模板复制**；显式 `--ai` 时调用 [opencode](https://github.com/sst/opencode) 让大模型分析项目并生成符合规范的 Skill 分包。
+在当前小程序项目中创建一个新的 Skill。**默认走本地模板复制**；`--mode agent` 时调用 [opencode](https://github.com/sst/opencode) 让大模型分析项目并生成符合规范的 Skill 分包。
 
 ```bash
 # 模板模式：拷贝模板到 <miniprogramRoot>/skills/<name>/
 cd ./my-miniprogram
 npx mp-skills create my-skill
 
-# AI 模式：进入 opencode 多轮会话，生成并自校验
-cd ./my-miniprogram
-npx mp-skills create my-skill --ai \
+# 指定项目目录
+npx mp-skills create my-skill -p ./my-miniprogram
+
+# agent 模式：进入 opencode 多轮会话，生成并自校验
+npx mp-skills create my-skill --mode agent \
   -s "咖啡点单、订单管理"
 
-# AI 模式 + 在已有 Skill 上迭代（同名再跑一次即可，agent 会做增量修改）
-npx mp-skills create my-skill --ai \
+# agent 模式 + 在已有 Skill 上迭代（同名再跑一次即可，agent 会做增量修改）
+npx mp-skills create my-skill --mode agent \
   -q "createOrder 接口缺少 amount 字段"
 
-# AI 模式 + 不指定 name：扫描整个项目，agent 自决要生成哪些 Skill
-npx mp-skills create --ai
+# agent 模式 + 不指定 name：扫描整个项目，agent 自决要生成哪些 Skill
+npx mp-skills create --mode agent
 ```
 
 | 选项                    | 说明                                                                 |
 | ----------------------- | -------------------------------------------------------------------- |
-| `--ai`                  | 使用大模型辅助生成 Skill（默认走模板）                               |
-| `-s, --scenario <desc>` | [--ai] 业务场景描述，帮助模型聚焦（如：商品检索、订单管理）          |
-| `-q, --query <text>`    | [--ai] 本轮诉求；在已有产物上迭代时尤其有用                          |
-| `-p, --provider <name>` | [--ai] LLM 提供方预设（deepseek / glm / kimi / minimax）             |
-| `-m, --model <name>`    | [--ai] 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL`               |
-| `-e, --env <envId>`     | [--ai] CloudBase 环境 ID（可选）                                     |
-| `-n, --non-interactive` | [--ai] 非交互模式：一次性跑完，适合脚本 / CI                         |
+| `-p, --project <path>`  | 项目目录（默认当前目录）                                             |
+| `--mode <mode>`         | 运行模式：`template`（默认，走模板）\| `agent`（大模型辅助生成）     |
+| `-s, --scenario <desc>` | [agent] 业务场景描述，帮助模型聚焦（如：商品检索、订单管理）         |
+| `-q, --query <text>`    | [agent] 本轮诉求；在已有产物上迭代时尤其有用                         |
+| `--provider <name>`     | [agent] LLM 提供方预设（deepseek / glm / kimi / minimax）            |
+| `-m, --model <name>`    | [agent] 模型名，覆盖 `--provider` 预设                               |
+| `-e, --env <envId>`     | [agent] CloudBase 环境 ID（可选）                                    |
+| `--non-interactive`     | [agent] 非交互模式：一次性跑完，适合脚本 / CI                        |
 
-> AI 模式需要 `opencode-ai` + 一组 OpenAI 兼容凭据。详见下方「LLM 凭证」。
+> agent 模式需要 `opencode-ai` + 一组 OpenAI 兼容凭据。详见下方「LLM 凭证」。
 
 ---
 
@@ -318,31 +321,36 @@ npx mp-skills render --name drinkList --project ./path/to/project
 
 ### eval
 
-对当前目录下**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。也可显式传入项目路径。
+对**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。
 
 ```bash
-export OPENAI_BASE_URL=https://api.deepseek.com/v1
-export OPENAI_API_KEY=sk-xxxx
-export OPENAI_MODEL=deepseek-chat
+# 设置凭据
+export WXA_SKILL_EVAL_LLM_BASE_URL=https://api.deepseek.com/v1
+export WXA_SKILL_EVAL_LLM_API_KEY=sk-xxxx
+export WXA_SKILL_EVAL_LLM_MODEL=deepseek-chat
 
 # 默认 official 模式
 npx mp-skills eval -c 3
 
-# 使用 provider 预设，无需手动设置环境变量中的模型信息
-npx mp-skills eval -p deepseek -m deepseek-v4-flash -c 3
+# 使用 provider 预设
+npx mp-skills eval --provider deepseek -m deepseek-v4-flash -c 3
+
+# 指定项目目录
+npx mp-skills eval -p ./my-miniprogram -c 3
 ```
 
 | 选项                         | 说明                                                                                 |
 | ---------------------------- | ------------------------------------------------------------------------------------ |
+| `-p, --project <path>`       | 项目目录（默认当前目录）                                                             |
 | `-e, --env <envId>`          | CloudBase 环境 ID。**BYOK 模式下可省略**——仅在需要透传给下游时填写                    |
 | `-c, --cases <n>`            | 生成的测试用例数（默认 1）                                                           |
 | `-s, --skill <name>`         | 只评估指定 Skill（默认评估全部）                                                     |
 | `--headless`                 | 无界面模式，适合 CI 环境                                                             |
 | `--mode <mode>`              | 评估模式，`official`（默认）或 `agent`                                               |
-| `-p, --provider <name>`      | LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model         |
-| `-m, --model <name>`         | 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL` 环境变量                             |
-| `--openai-api-key <key>`     | OpenAI 兼容 API Key，覆盖 `OPENAI_API_KEY` 环境变量                                  |
-| `--openai-base-url <url>`    | OpenAI 兼容 Base URL，覆盖 `--provider` 预设与 `OPENAI_BASE_URL` 环境变量            |
+| `--provider <name>`          | LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model         |
+| `-m, --model <name>`         | 模型名，覆盖 `--provider` 预设与 `WXA_SKILL_EVAL_LLM_MODEL` 环境变量                 |
+| `--openai-api-key <key>`     | OpenAI 兼容 API Key，覆盖对应环境变量                                                |
+| `--openai-base-url <url>`    | OpenAI 兼容 Base URL，覆盖 `--provider` 预设与对应环境变量                           |
 
 **两种评估模式**（实际评测都由官方 `wxa-skills-eval` CLI 执行）：
 
@@ -360,17 +368,19 @@ npx mp-skills eval --mode agent -c 3
 
 ## LLM 凭证（BYOK）
 
-`create --ai` 与 `eval` 共用**同一套** OpenAI 兼容凭证，按以下优先级解析：
+`create --mode agent` 与 `eval` 共用**同一套** OpenAI 兼容凭证，通过环境变量配置：
 
-1. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` ← **推荐**
-2. `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`（或 `ANTHROPIC_API_KEY`） / `ANTHROPIC_MODEL`
-3. `CLOUDBASE_AI_ENDPOINT` / `CLOUDBASE_API_KEY` / `CLOUDBASE_AI_MODEL`
+```bash
+export WXA_SKILL_EVAL_LLM_BASE_URL=<your-endpoint>
+export WXA_SKILL_EVAL_LLM_API_KEY=<your-key>
+export WXA_SKILL_EVAL_LLM_MODEL=<model-name>
+```
 
 运行前还会自动加载当前目录的 `.env`（不覆盖已显式 `export` 的变量）。
 
 ### 交互式向导
 
-若运行 `create --ai`/`eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
+若运行 `create --mode agent` / `eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
 
 ```
 ? 请选择 LLM 提供方：
@@ -409,12 +419,12 @@ npx mp-skills eval --mode agent -c 3
 
 内置了常用 LLM 提供方的端点和默认模型，只需填写 API Key 即可：
 
-| 提供方        | 环境变量前缀 | 默认模型           | Base URL                              |
-| ------------- | ------------- | ------------------ | ------------------------------------- |
-| DeepSeek      | `OPENAI_`     | `deepseek-v4-flash`| `https://api.deepseek.com/v1`         |
-| 智谱 GLM      | `OPENAI_`     | `glm-5.1`         | `https://open.bigmodel.cn/api/paas/v4`|
-| Kimi (Moonshot) | `OPENAI_`   | `kimi-k2.6`       | `https://api.moonshot.cn/v1`          |
-| MiniMax       | `OPENAI_`     | `minimax-m2.7`    | `https://api.minimaxi.com/v1`         |
+| 提供方          | 默认模型           | Base URL                              |
+| --------------- | ------------------ | ------------------------------------- |
+| DeepSeek        | `deepseek-v4-flash`| `https://api.deepseek.com/v1`         |
+| 智谱 GLM        | `glm-5.1`         | `https://open.bigmodel.cn/api/paas/v4`|
+| Kimi (Moonshot) | `kimi-k2.6`       | `https://api.moonshot.cn/v1`          |
+| MiniMax         | `minimax-m2.7`    | `https://api.minimaxi.com/v1`         |
 
 选择预设提供方后，只需输入：
 - **API Key**（必填）
@@ -430,13 +440,13 @@ npx mp-skills eval --mode agent -c 3
 
 ### 凭证持久化
 
-选完的凭证会写入当前目录的 `.env` 文件（`OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`），下次运行时自动加载，不再弹出向导。
+选完的凭证会写入当前目录的 `.env` 文件，下次运行时自动加载，不再弹出向导。
 
 ```bash
 # 写入的 .env 示例
-OPENAI_BASE_URL=https://api.deepseek.com/v1
-OPENAI_API_KEY=sk-xxxx
-OPENAI_MODEL=deepseek-v4-flash
+WXA_SKILL_EVAL_LLM_BASE_URL=https://api.deepseek.com/v1
+WXA_SKILL_EVAL_LLM_API_KEY=sk-xxxx
+WXA_SKILL_EVAL_LLM_MODEL=deepseek-v4-flash
 ```
 
 > ⚠️ **安全提示**：`.env` 含明文密钥，请注意保管，建议加入 `.gitignore`：
@@ -450,7 +460,7 @@ OPENAI_MODEL=deepseek-v4-flash
 
 ### URL 规范化
 
-`BASE_URL` 会自动规范化处理：
+`WXA_SKILL_EVAL_LLM_BASE_URL` 会自动规范化处理：
 
 - 去掉末尾的 `/`
 - 剥离 `/anthropic` 或 `/messages` 后缀
@@ -460,7 +470,7 @@ OPENAI_MODEL=deepseek-v4-flash
 - `https://api.deepseek.com` → `https://api.deepseek.com/v1`
 - `https://api.deepseek.com/anthropic` → `https://api.deepseek.com/v1`
 
-只需配置一组凭证即可同时驱动 `create --ai`（opencode）和 `eval`（wxa-skills-eval）。
+只需配置一组凭证即可同时驱动 `create --mode agent`（opencode）和 `eval`（wxa-skills-eval）。
 
 ---
 
