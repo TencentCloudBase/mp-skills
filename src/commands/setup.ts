@@ -3,6 +3,8 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { execSync } from 'node:child_process'
+import { createInterface } from 'node:readline'
 import CloudBase from '@cloudbase/manager-node'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { writeProjectCloudbaserc } from '../lib/cloudbase-config.js'
@@ -149,10 +151,15 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
   }
 
   // ── 获取环境 ID ──
-  const targetEnvId = envId || readEnvIdFromProject(projectPath)
+  let targetEnvId = envId || readEnvIdFromProject(projectPath)
+
+  // 未解析到有效 envId 时，交互式选择环境
+  if (!targetEnvId || targetEnvId.includes('{{env.')) {
+    targetEnvId = await interactiveEnvSelect(projectPath)
+  }
   if (!targetEnvId) {
-    console.log('  ❌ 请通过 --env-id 参数指定云开发环境 ID')
-    console.log('     或先在项目根目录执行 tcb login 登录')
+    console.log('  ❌ 未选择云开发环境')
+    console.log('     可通过 --env-id 参数指定，或设置 ENV_ID 环境变量')
     console.log('')
     return
   }
@@ -322,4 +329,66 @@ function readEnvIdFromProject(projectPath: string): string | null {
     } catch {}
   }
   return null
+}
+
+/**
+ * 交互式选择云开发环境
+ * 调用 tcb env list 获取环境列表，让用户选择
+ */
+async function interactiveEnvSelect(projectPath: string): Promise<string | null> {
+  // 确保登录
+  const cred = ensureLogin()
+  if (!cred) {
+    console.log('  ❌ 登录失败，请执行 tcb login 手动登录')
+    return null
+  }
+
+  console.log('  🔍 获取环境列表...')
+
+  let output: string
+  try {
+    output = execSync('tcb env list', { encoding: 'utf-8', timeout: 15000 })
+  } catch {
+    console.log('  ❌ 获取环境列表失败，请通过 --env-id 参数指定')
+    return null
+  }
+
+  // 解析 tcb env list 输出
+  // 格式：envName (envId) 状态
+  const envLines: { id: string; name: string }[] = []
+  for (const line of output.split('\n')) {
+    const match = line.match(/([\w-]+)\s+\(([\w-]+)\)/)
+    if (match) {
+      envLines.push({ name: match[1], id: match[2] })
+    }
+  }
+
+  if (envLines.length === 0) {
+    console.log('  ❌ 未找到云开发环境，请先在控制台创建')
+    return null
+  }
+
+  if (envLines.length === 1) {
+    const env = envLines[0]
+    console.log(`  ✔ 使用环境: ${env.name} (${env.id})`)
+    return env.id
+  }
+
+  // 交互式选择
+  console.log('')
+  console.log('  ⚡ 请选择云开发环境:')
+  for (let i = 0; i < envLines.length; i++) {
+    console.log(`     ${i + 1}. ${envLines[i].name} (${envLines[i].id})`)
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => {
+    rl.question('  请输入序号 (1): ', (answer) => {
+      rl.close()
+      const idx = parseInt(answer.trim(), 10) - 1
+      const selected = envLines[Math.min(Math.max(idx, 0), envLines.length - 1)]
+      console.log(`  ✔ 使用环境: ${selected.name} (${selected.id})`)
+      resolve(selected.id)
+    })
+  })
 }

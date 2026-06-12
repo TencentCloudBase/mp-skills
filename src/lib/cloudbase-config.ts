@@ -13,7 +13,7 @@ import { resolveMiniprogramRoot } from './utils.js'
 interface CollectionEntry {
   name: string
   description: string
-  indexes: Array<{ field: string; unique?: boolean }>
+  indexes: Array<{ field: string | string[]; unique?: boolean }>
 }
 
 /**
@@ -70,10 +70,10 @@ export function mergeSkillCloudbaserc(projectPath: string): ProjectCloudbaserc {
       for (const col of raw.database?.collections || []) {
         const existing = colMap.get(col.name)
         if (existing) {
-          // 合并 indexes（按 field 去重）
+          // 合并 indexes（按 field 去重，支持 string 和 string[]）
+          const existingFields = new Set(existing.indexes.map(i => JSON.stringify(i.field)))
           for (const idx of col.indexes || []) {
-            if (!existing.indexes.some((e: { field: string; unique?: boolean }) => e.field === idx.field)) {
-              if (!existing.indexes) existing.indexes = []
+            if (!existingFields.has(JSON.stringify(idx.field))) {
               existing.indexes.push(idx)
             }
           }
