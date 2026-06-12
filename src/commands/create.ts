@@ -61,7 +61,12 @@ export async function createCommand(name?: string, opts: CreateOptions = {}): Pr
     }
   }
 
-  // 3. 路由
+  // 3. 交互式选择模式（未显式指定 --ai 时询问）
+  if (opts.ai === undefined && process.stdin.isTTY) {
+    opts.ai = await promptSelectAiMode()
+  }
+
+  // 4. 路由
   if (opts.ai) {
     await callAiMode(name, projectPath, mpRoot, opts)
   } else {
@@ -177,6 +182,16 @@ function injectToAppJson(appJsonPath: string, skillName: string) {
     })
     writeFileSync(appJsonPath, JSON.stringify(app, null, 2) + '\n')
   }
+}
+
+function promptSelectAiMode(): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => {
+    rl.question('  使用 AI 模式创建 (可自定义业务场景)? (y/N): ', (answer) => {
+      rl.close()
+      resolve(answer.trim().toLowerCase() === 'y')
+    })
+  })
 }
 
 function promptName(): Promise<string> {
