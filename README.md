@@ -14,15 +14,6 @@
 让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
 
 > [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
-
-```bash
-# 先看看有什么 Skill 可用
-npx mp-skills find
-
-# 找到想要的，直接安装
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
-```
-
 ---
 
 ## 快速开始
