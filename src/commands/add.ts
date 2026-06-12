@@ -112,7 +112,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       const match = skills.find((s) => s.name === opts.skill)
       if (!match) {
         warn(`未找到 "${opts.skill}"`)
-        log(`可用: ${skills.map((s) => s.name).join(', ')}`)
+        log('可用 npx mp-skills add <仓库> --all 查看所有可用 Skill')
         return
       }
       // 需要 clone 来获取实际文件
