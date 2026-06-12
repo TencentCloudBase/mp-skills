@@ -4,6 +4,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
+import { resolveCloudfunctionRoot } from '../lib/utils.js'
 import { scanCollections, scanSharedCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
 import type { DeployedState, CloudFunctionInfo } from '../types.js'
@@ -59,15 +60,17 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   console.log(`  共 ${funcs.length} 个云函数`)
   console.log('')
 
+  const cfDest = resolveCloudfunctionRoot(projectPath) || 'cloudfunctions/'
+
   if (dryRun) {
-    console.log('  [dry-run] 将聚合到 cloudfunctions/')
+    console.log(`  [dry-run] 将聚合到 ${cfDest}`)
     console.log('')
     return
   }
 
   const aggregated = aggregateCloudFunctions(projectPath, funcs)
   if (aggregated.length > 0) {
-    console.log(`  已聚合 ${aggregated.length} 个云函数到 cloudfunctions/`)
+    console.log(`  已聚合 ${aggregated.length} 个云函数到 ${cfDest}`)
   }
 
   const events = funcs.filter((f) => f.type === 'event')

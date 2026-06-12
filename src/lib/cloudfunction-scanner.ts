@@ -4,14 +4,16 @@
 // 支持聚合到项目根目录 cloudfunctions/
 
 import { existsSync, readFileSync, readdirSync, cpSync, mkdirSync, type Dirent } from 'node:fs'
-import { join, basename } from 'node:path'
+import { join, basename, resolve } from 'node:path'
 import type { CloudFunctionInfo, CloudFunctionType } from '../types.js'
+import { resolveMiniprogramRoot, resolveCloudfunctionRoot } from './utils.js'
 
 /**
  * 扫描项目中所有 Skill 的云函数
  */
 export function scanCloudFunctions(projectPath: string): CloudFunctionInfo[] {
-  const skillsDir = join(projectPath, 'skills')
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  const skillsDir = mpRoot ? join(mpRoot, 'skills') : join(projectPath, 'skills')
   if (!existsSync(skillsDir)) return []
 
   const skillDirs = readdirSync(skillsDir, { withFileTypes: true }).filter(
@@ -97,7 +99,7 @@ export function aggregateCloudFunctions(
   funcs: CloudFunctionInfo[],
   targetDir?: string,
 ): { funcName: string; destPath: string }[] {
-  const dest = targetDir || join(projectPath, 'cloudfunctions')
+  const dest = targetDir || resolveCloudfunctionRoot(projectPath) || join(projectPath, 'cloudfunctions')
   mkdirSync(dest, { recursive: true })
 
   const results: { funcName: string; destPath: string }[] = []

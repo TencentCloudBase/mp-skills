@@ -108,3 +108,22 @@ export function resolveMiniprogramRoot(projectPath: string): string | null {
   if (existsSync(inRoot)) return projectPath
   return null
 }
+
+/**
+ * 解析 project.config.json 中的 `cloudfunctionRoot`。
+ * 没有配置时返回 null，调用方自行 fallback。
+ */
+export function resolveCloudfunctionRoot(projectPath: string): string | null {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return null
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf8'))
+    if (typeof config?.cloudfunctionRoot === 'string' && config.cloudfunctionRoot) {
+      const rel = config.cloudfunctionRoot.replace(/^[/\\]+/, '').replace(/[/\\]+$/, '')
+      return resolve(projectPath, rel)
+    }
+  } catch {
+    // 解析失败按缺失处理
+  }
+  return null
+}
