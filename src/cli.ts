@@ -224,6 +224,7 @@ program
 // ── eval — 对 Skills 项目启动端到端评估 ──────────────────
 program
   .command('eval')
+  .usage('')
   .description('对已有 Skills 项目启动端到端质量评估（需先安装 wxa-skills-eval）')
   .option('-p, --project <path>', '项目目录', '.')
   .option('-e, --env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
