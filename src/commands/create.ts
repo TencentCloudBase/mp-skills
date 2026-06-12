@@ -1,6 +1,6 @@
 // ── create 命令 ──
 // 在已有小程序项目中创建一个新的 Skill 骨架。
-// 默认走模板复制（templates/skill-skeleton/）；显式 --ai 时走大模型辅助生成。
+// 默认走模板复制（templates/skill-skeleton/）；显式 --mode agent 时走大模型辅助生成。
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { join, resolve, dirname, relative } from 'node:path'
@@ -9,23 +9,25 @@ import * as readline from 'node:readline'
 import { SKELETON } from '../lib/templates-data.js'
 
 export interface CreateOptions {
-  /** 启用大模型辅助生成 */
-  ai?: boolean
-  /** [--ai] 业务场景描述 */
+  /** 项目目录 */
+  project?: string
+  /** 运行模式：template（默认）| agent */
+  mode?: string
+  /** [agent] 业务场景描述 */
   scenario?: string
-  /** [--ai] 本轮诉求 / 迭代提示 */
+  /** [agent] 本轮诉求 / 迭代提示 */
   query?: string
-  /** [--ai] LLM 提供方预设 */
+  /** [agent] LLM 提供方预设 */
   provider?: string
-  /** [--ai] 模型名 */
+  /** [agent] 模型名 */
   model?: string
-  /** [--ai] CloudBase 环境 ID */
+  /** [agent] CloudBase 环境 ID */
   env?: string
-  /** [--ai] 一次性跑完（CI 兜底） */
+  /** [agent] 一次性跑完（CI 兜底） */
   nonInteractive?: boolean
 }
 
-const AI_ONLY_FLAGS: Array<{ key: keyof CreateOptions; label: string }> = [
+const AGENT_ONLY_FLAGS: Array<{ key: keyof CreateOptions; label: string }> = [
   { key: 'scenario', label: '--scenario' },
   { key: 'query', label: '--query' },
   { key: 'provider', label: '--provider' },
@@ -34,8 +36,9 @@ const AI_ONLY_FLAGS: Array<{ key: keyof CreateOptions; label: string }> = [
   { key: 'nonInteractive', label: '--non-interactive' },
 ]
 
-export async function createCommand(name?: string, opts: CreateOptions = {}): Promise<void> {
-  const projectPath = resolve('.')
+export async function createCommand(name: string | undefined, opts: CreateOptions = {}): Promise<void> {
+  let isAgent = opts.mode === 'agent'
+  const projectPath = resolve(opts.project || '.')
 
   // 1. 校验小程序项目结构（两个模式共享）
   const configPath = join(projectPath, 'project.config.json')
@@ -51,23 +54,23 @@ export async function createCommand(name?: string, opts: CreateOptions = {}): Pr
     return
   }
 
-  // 2. 校验 --ai 专用 flag 必须配合 --ai 使用
-  if (!opts.ai) {
-    const misused = AI_ONLY_FLAGS.filter((f) => opts[f.key] !== undefined && opts[f.key] !== false)
+  // 2. 校验 agent 专用 flag 必须配合 --mode agent 使用
+  if (!isAgent) {
+    const misused = AGENT_ONLY_FLAGS.filter((f) => opts[f.key] !== undefined && opts[f.key] !== false)
     if (misused.length > 0) {
       const labels = misused.map((f) => f.label).join('、')
-      warn(`${labels} 仅在 --ai 模式下有效，请加 --ai`)
+      warn(`${labels} 仅在 --mode agent 下有效`)
       return
     }
   }
 
   // 3. 交互式选择模式（未显式指定 --ai 时询问）
-  if (opts.ai === undefined && process.stdin.isTTY) {
-    opts.ai = await promptSelectAiMode()
+  if (opts.mode === undefined && process.stdin.isTTY) {
+    opts.mode = (await promptSelectAiMode()) ? 'agent' : 'template'
   }
 
-  // 4. 路由
-  if (opts.ai) {
+  // 3. 路由
+  if (opts.mode === 'agent') {
     await callAiMode(name, projectPath, mpRoot, opts)
   } else {
     await callTemplateMode(name, projectPath, mpRoot)

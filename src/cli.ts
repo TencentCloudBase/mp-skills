@@ -84,16 +84,18 @@ program
 // ── create — 创建新 Skill ────────────────────────────
 program
   .command('create [name]')
-  .description('在当前项目中创建新的 Skill 骨架（默认走模板；--ai 进入大模型辅助生成）')
-  .option('--ai', '使用大模型辅助生成 Skill（默认走模板）')
-  .option('-s, --scenario <desc>', '[--ai] 业务场景描述（如：商品检索、订单管理）')
-  .option('-q, --query <text>', '[--ai] 本轮诉求；在已有产物上迭代时尤其有用')
-  .option('-p, --provider <name>', '[--ai] LLM 提供方预设（deepseek / glm / kimi / minimax）')
-  .option('-m, --model <name>', '[--ai] 模型名')
-  .option('-e, --env <envId>', '[--ai] CloudBase 环境 ID')
-  .option('-n, --non-interactive', '[--ai] 非交互模式：一次性跑完，适合脚本 / CI', false)
+  .description('在项目中创建新的 Skill 骨架（默认走模板，--mode agent 进入大模型辅助生成）')
+  .option('-p, --project <path>', '项目目录', '.')
+  .option('--mode <mode>', '运行模式：template（默认，走模板）| agent（大模型辅助生成）', 'template')
+  .option('-s, --scenario <desc>', '[agent] 业务场景描述（如：商品检索、订单管理）')
+  .option('-q, --query <text>', '[agent] 本轮诉求；在已有产物上迭代时尤其有用')
+  .option('--provider <name>', '[agent] LLM 提供方预设（deepseek / glm / kimi / minimax）')
+  .option('-m, --model <name>', '[agent] 模型名')
+  .option('-e, --env <envId>', '[agent] CloudBase 环境 ID')
+  .option('--non-interactive', '[agent] 非交互模式：一次性跑完，适合脚本 / CI', false)
   .action(async (name, opts) => {
-    const cmdName = opts.ai ? 'create:ai' : 'create'
+    const mode = opts.mode === 'agent' ? 'agent' : 'template'
+    const cmdName = `create:${mode}`
     const start = Date.now()
     try {
       const { createCommand } = await import('./commands/create.js')
@@ -207,23 +209,24 @@ program
 
 // ── eval — 对 Skills 项目启动端到端评估 ──────────────────
 program
-  .command('eval [project-dir]')
+  .command('eval')
   .description('对已有 Skills 项目启动端到端质量评估（需先安装 wxa-skills-eval）')
+  .option('-p, --project <path>', '项目目录', '.')
   .option('-e, --env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
   .option('-c, --cases <n>', '生成的测试用例数', '1')
   .option('-s, --skill <name>', '只评估指定 Skill（默认评估全部）')
   .option('--headless', '无界面模式，适合 CI 环境', false)
   .option('--mode <mode>', '评估模式：official（直接调官方 CLI）| agent（自主调官方 CLI）', 'official')
   .option(
-    '-p, --provider <name>',
+    '--provider <name>',
     `LLM 提供方预设（deepseek / glm / kimi / minimax）；预填 baseUrl 与默认 model，仍需配置 ${ENV.API_KEY}`,
   )
   .option('-m, --model <name>', `模型名，覆盖 --provider 预设与 ${ENV.MODEL} 环境变量`)
   .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖对应环境变量')
   .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与对应环境变量')
-  .action(async (projectDir, opts) => {
+  .action(async (opts) => {
     const { evalCommand } = await import('./commands/eval.js')
-    await evalCommand(projectDir || '.', opts)
+    await evalCommand(opts.project, opts)
   })
 
 // Parse args
