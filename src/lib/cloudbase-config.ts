@@ -192,5 +192,6 @@ export function writeSharedConfig(projectPath: string, envId: string): boolean {
   ].join('\n')
 
   writeFileSync(configPath, tmpl, 'utf-8')
+  console.log(`  已写入共享配置: ${configPath}`)
   return true
 }
