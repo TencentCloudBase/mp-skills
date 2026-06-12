@@ -1,11 +1,11 @@
 # AI 小程序模板
 
-基于 [mp-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 的云开发 AI 小程序模板，集成了微信小程序云开发 Agent 能力，支持快速接入和开发 AI Skill。
+基于 [mp-skills](https://github.com/TencentCloudBase/mp-skills) 的云开发 AI 小程序模板，集成了微信小程序云开发 Agent 能力，支持快速接入和开发 AI Skill。
 
 ## 前置条件
 
 - Node.js v16+
-- 微信开发者工具 （稳定版）
+- 微信开发者工具（稳定版）
 - 全局安装 mp-skills CLI: `npm install -g mp-skills`
 
 ## 快速开始
@@ -16,11 +16,14 @@
 
 3. **填写云环境 ID**：在 `miniprogram/app.js` 中将 `env` 替换为你的云开发环境 ID。如不启用云开发，Skill 会使用 seed/mock 数据正常运行。
 
-4. **安装示例 Skill**：
+4. **发现并安装 Skill**：
 
    ```bash
-   mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill
-   mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill greet-skill
+   # 先看看有哪些 Skill 可用
+   mp-skills find
+
+   # 安装想要的 Skill
+   mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill <name>
    ```
 
 5. **运行 setup**：
@@ -57,7 +60,7 @@ project-root/
 │   │       └── index.json
 │   └── skills/                   # Skills 目录（由 mp-skills 管理）
 │       ├── greet-skill/
-│       └── drink-skill/
+│       └── ...                   # 更多 Skill
 ├── docs/                         # 开发文档
 │   ├── SKILL-DEV-GUIDE.md
 │   └── COMPONENT-TEMPLATES.md
@@ -70,9 +73,10 @@ project-root/
 
 | 命令 | 说明 |
 |------|------|
+| `mp-skills find` | 搜索远程仓库中的 Skill |
 | `mp-skills add <repo> --skill <name>` | 安装指定 Skill |
 | `mp-skills remove <name>` | 移除指定 Skill |
 | `mp-skills list` | 列出已安装的 Skill |
 | `mp-skills setup` | 初始化项目配置 |
 | `mp-skills create <name>` | 创建新的 Skill 模板 |
-| `mp-skills build` | 构建所有 Skill |
+| `mp-skills new <name>` | 创建新的 AI 小程序项目 |
