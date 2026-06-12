@@ -14,7 +14,7 @@ export async function statusCommand(projectDir: string): Promise<void> {
   const sharedCollections = scanSharedCollections(projectPath)
   const allCollections = new Map<string, { name: string; skills: string[] }>()
   for (const c of declaredCollections) allCollections.set(c.name, { name: c.name, skills: c.skills })
-  for (const c of sharedCollections) allCollections.set(c.name, { name: c.name, skills: c.skills })
+  for (const c of sharedCollections as any) allCollections.set(c.name, { name: c.name, skills: c.skills })
 
   const deployed = readDeployedState(projectPath) || { cloudfunctions: [], collections: [], services: [] }
 

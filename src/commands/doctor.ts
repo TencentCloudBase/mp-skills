@@ -23,7 +23,7 @@ export async function doctorCommand(projectDir: string): Promise<void> {
   const shared = scanSharedCollections(projectPath)
   const allCollections = new Map<string, string>()
   for (const c of collections) allCollections.set(c.name, c.skills.join(', '))
-  for (const c of shared) {
+  for (const c of shared as any) {
     if (!allCollections.has(c.name)) allCollections.set(c.name, c.skills.join(', '))
   }
 

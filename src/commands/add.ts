@@ -212,7 +212,7 @@ function promptSetupIfNeeded(projectPath: string): void {
   const missingFuncs = funcs.filter((f) => !deployed?.cloudfunctions?.includes(f.name))
   const allColNames = new Set<string>()
   for (const c of collections) allColNames.add(c.name)
-  for (const c of shared) allColNames.add(c.name)
+  for (const c of shared as any) allColNames.add(c.name)
   const missingCols = Array.from(allColNames).filter((c) => !deployed?.collections?.includes(c))
 
   if (missingFuncs.length > 0 || missingCols.length > 0) {

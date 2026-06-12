@@ -115,7 +115,7 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
   const mode = opts.mode === 'agent' ? 'agent' : 'official'
 
   if (mode === 'agent') {
-    await runAgentMode({ evalSkillDir, targetPath, evalCliPath, creds, env, opts })
+    await runAgentMode({ evalSkillDir, targetPath, evalCliPath, projectPath, creds, env, opts })
     return
   }
 
@@ -175,11 +175,12 @@ async function runAgentMode(ctx: {
   evalSkillDir: string
   targetPath: string
   evalCliPath: string
+  projectPath: string
   creds: LlmCredentials
   env: NodeJS.ProcessEnv
   opts: EvalOptions
 }): Promise<void> {
-  const { evalSkillDir, targetPath, evalCliPath, creds, env, opts } = ctx
+  const { evalSkillDir, targetPath, evalCliPath, projectPath, creds, env, opts } = ctx
 
   const opencodeBin = resolveOpencodeBin()
   if (!opencodeBin) {
@@ -203,7 +204,7 @@ async function runAgentMode(ctx: {
     headless: opts.headless,
   })
 
-  title('🤖 启动 agent 驱动评估...')
+  title('* 启动 agent 驱动评估...')
   kv('项目路径', projectPath)
   kv('评估 CLI', evalCliPath)
   kv('skill 目录', skillsRoot)
