@@ -1,46 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" width="680" height="220">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 100" width="520" height="100">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a1b26"/>
-      <stop offset="100%" stop-color="#0f0f17"/>
-    </linearGradient>
-    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="txtGlow" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#7aa2f7"/>
       <stop offset="100%" stop-color="#50fa7b"/>
     </linearGradient>
   </defs>
 
-  <!-- Terminal Window -->
-  <rect x="10" y="8" width="660" height="204" rx="10" fill="url(#bg)" stroke="#2a2b3d" stroke-width="1.5"/>
+  <!-- Prompt -->
+  <text x="20" y="58" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace" font-size="36" fill="#50fa7b" font-weight="bold">$</text>
 
-  <!-- Title Bar -->
-  <rect x="10" y="8" width="660" height="28" rx="10" fill="#1f2030"/>
-  <rect x="10" y="26" width="660" height="10" fill="#1f2030"/>
+  <!-- Command: find -->
+  <text x="50" y="58" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace" font-size="36" fill="#7aa2f7" font-weight="700" letter-spacing="0.5">mp-skills find</text>
 
-  <!-- Traffic Lights -->
-  <circle cx="36" cy="22" r="5" fill="#ff5555" opacity="0.9"/>
-  <circle cx="54" cy="22" r="5" fill="#f1fa8c" opacity="0.9"/>
-  <circle cx="72" cy="22" r="5" fill="#50fa7b" opacity="0.9"/>
+  <!-- Keyword with different color -->
+  <text x="364" y="58" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace" font-size="36" fill="url(#txtGlow)" font-weight="700" letter-spacing="0.5">支付</text>
 
-  <!-- Title Text -->
-  <text x="340" y="27" font-family="'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace" font-size="11" fill="#565f89" text-anchor="middle" dominant-baseline="middle">mp-skills</text>
+  <!-- Blinking cursor -->
+  <rect x="448" y="28" width="9" height="40" rx="2" fill="#c0caf5" opacity="0.85">
+    <animate attributeName="opacity" values="0.85;0.08;0.85" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
 
-  <!-- ASCII Art Logo Lines -->
-  <!-- Line 1 -->
-  <text x="24" y="58" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#c0caf5" font-weight="500">██     ██ ████████           ██████  ██    ██ ████ ██       ██        ██████</text>
-  <!-- Line 2 -->
-  <text x="24" y="76" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#a9b1d6" font-weight="500">███   ███ ██     ██         ██    ██ ██   ██   ██  ██       ██       ██    ██</text>
-  <!-- Line 3 -->
-  <text x="24" y="94" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#9aa5ce" font-weight="500">████ ████ ██     ██         ██       ██  ██    ██  ██       ██       ██</text>
-  <!-- Line 4 -->
-  <text x="24" y="112" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#7aa2f7" font-weight="600">██ ███ ██ ████████  ███████  ██████  █████     ██  ██       ██        ██████</text>
-  <!-- Line 5 -->
-  <text x="24" y="130" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#7dcfff" font-weight="500">██     ██ ██                      ██ ██  ██    ██  ██       ██             ██</text>
-  <!-- Line 6 -->
-  <text x="24" y="148" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#2ac3de" font-weight="500">██     ██ ██                ██    ██ ██   ██   ██  ██       ██       ██    ██</text>
-  <!-- Line 7 -->
-  <text x="24" y="166" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="13" fill="#0db9d7" font-weight="500">██     ██ ██                 ██████  ██    ██ ████ ████████ ████████  ██████</text>
-
-  <!-- Subtitle -->
-  <text x="24" y="194" font-family="'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace" font-size="11" fill="#565f89">$ mp-skills find  |  add  |  create  |  eval  |  setup</text>
+  <!-- Output line -->
+  <text x="20" y="86" font-family="'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace" font-size="13" fill="#9ece6a">  Found 2 skills (payment-skill, bill-skill)</text>
 </svg>
