@@ -1,18 +1,14 @@
 # mp-skills
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/mp-skills">
-    <img src="https://img.shields.io/npm/v/mp-skills.svg?style=flat-square" alt="npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/mp-skills">
-    <img src="https://img.shields.io/npm/dm/mp-skills.svg?style=flat-square" alt="npm downloads" />
-  </a>
-  <a href="https://github.com/TencentCloudBase/mp-skills/blob/main/LICENSE">
-    <img src="https://img.shields.io/npm/l/mp-skills.svg?style=flat-square" alt="license" />
-  </a>
-  <a href="https://nodejs.org/">
-    <img src="https://img.shields.io/node/v/mp-skills?style=flat-square" alt="node version" />
-  </a>
+  <img src="media/logo.svg" alt="mp-skills logo" width="480">
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/mp-skills"><img src="https://img.shields.io/npm/v/mp-skills.svg?style=flat-square" alt="npm version"></a>&nbsp;
+  <a href="https://www.npmjs.com/package/mp-skills"><img src="https://img.shields.io/npm/dm/mp-skills.svg?style=flat-square" alt="npm downloads"></a>&nbsp;
+  <a href="https://github.com/TencentCloudBase/mp-skills/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/mp-skills.svg?style=flat-square" alt="license"></a>&nbsp;
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/node/v/mp-skills?style=flat-square" alt="node version"></a>
 </p>
 
 让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
