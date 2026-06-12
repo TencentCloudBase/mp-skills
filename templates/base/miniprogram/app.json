@@ -1,5 +1,7 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": [
+    "pages/index/index"
+  ],
   "window": {
     "navigationBarBackgroundColor": "#1677ff",
     "navigationBarTitleText": "AI 小程序",

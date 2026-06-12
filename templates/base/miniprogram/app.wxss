@@ -1,7 +1,19 @@
+/* 全局样式 */
+
 page {
   background: #f5f7fa;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 28rpx;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
+
 view {
   box-sizing: border-box;
+}
+
+/* 工具类：内容容器 */
+.container {
+  padding: 0 32rpx;
 }

@@ -1,18 +1,69 @@
 .page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: #f5f7fa;
 }
 
+/* 加载状态 */
 .loading {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
   padding: 80px 0;
+}
+
+.loading-text {
   font-size: 28rpx;
   color: rgba(0, 0, 0, 0.3);
 }
 
+/* 错误状态 */
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 80px 32rpx;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: #fa5151;
+  text-align: center;
+}
+
+/* 内容区域 */
+.content {
+  flex: 1;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 80px 32rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 16rpx;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* 底部 */
 .footer {
   text-align: center;
-  padding: 32px 0;
+  padding: 32rpx 0;
 }
 
 .footer-text {

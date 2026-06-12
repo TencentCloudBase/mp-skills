@@ -1,12 +1,30 @@
 <view class="page">
-  <welcome-card
-    data="{{welcomeData}}"
-    bind:action="onAction"
-    wx:if="{{!loading}}"
-  />
-  <view wx:if="{{loading}}" class="loading">加载中...</view>
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text class="loading-text">加载中...</text>
+  </view>
 
+  <!-- 错误状态 -->
+  <view wx:elif="{{error}}" class="error-state">
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <!-- 欢迎卡片 -->
+  <view wx:elif="{{welcomeData}}" class="content">
+    <welcome-card
+      data="{{welcomeData}}"
+      bind:action="onAction"
+    />
+  </view>
+
+  <!-- 空状态：无 Skill 时 -->
+  <view wx:else class="empty-state">
+    <text class="empty-text">欢迎使用 AI 小程序</text>
+    <text class="empty-hint">运行 mp-skills add 安装更多 Skill</text>
+  </view>
+
+  <!-- 底部提示 -->
   <view class="footer">
-    <text class="footer-text">运行 mp-skills add 安装更多 Skill</text>
+    <text class="footer-text">Powered by mp-skills</text>
   </view>
 </view>
