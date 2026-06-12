@@ -74,7 +74,35 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
     return
   }
 
-  const aggregated = aggregateCloudFunctions(projectPath, funcs)
+  // ── 交互选择待聚合云函数 ──
+  const selectItems = [
+    { value: '__all__', label: '全部云函数', description: `聚合全部 ${funcs.length} 个云函数` },
+    ...funcs.map((f) => ({
+      value: f.name,
+      label: `${f.name}${f.type === 'http' ? ' [HTTP]' : ''}`,
+      description: `Skill: ${f.skillName}  类型: ${f.type}`,
+    })),
+  ]
+
+  const selected = await fuzzySelect(selectItems, { multiSelect: true })
+  if (!selected) {
+    console.log('  已取消')
+    console.log('')
+    return
+  }
+
+  const selectedNames = selected.split(',').filter(Boolean)
+  const toAggregate = selectedNames.includes('__all__') ? funcs : funcs.filter((f) => selectedNames.includes(f.name))
+
+  if (toAggregate.length === 0) {
+    console.log('  未选择任何云函数')
+    console.log('')
+    return
+  }
+
+  console.log(`  即将聚合 ${toAggregate.length} 个云函数到 ${cfDest}`)
+
+  const aggregated = aggregateCloudFunctions(projectPath, toAggregate)
   if (aggregated.length > 0) {
     console.log(`  已聚合 ${aggregated.length} 个云函数到 ${cfDest}`)
     if (ensureCloudfunctionRoot(projectPath)) {
@@ -85,12 +113,12 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   const mergedPath = writeProjectCloudbaserc(projectPath)
   if (mergedPath) {
     console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
-  } else if (funcs.length > 0) {
+  } else if (toAggregate.length > 0) {
     console.log(`  ⚠️  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
   }
 
-  const events = funcs.filter((f) => f.type === 'event')
-  const https = funcs.filter((f) => f.type === 'http')
+  const events = toAggregate.filter((f) => f.type === 'event')
+  const https = toAggregate.filter((f) => f.type === 'http')
 
   if (events.length > 0) {
     console.log('')
@@ -123,7 +151,7 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
     console.log('      https://tcb.cloud.tencent.com/dev#/gateway')
   }
 
-  updateDeployedIfChanged(projectPath, { cloudfunctions: funcs.map((f) => f.name) })
+  updateDeployedIfChanged(projectPath, { cloudfunctions: toAggregate.map((f) => f.name) })
   console.log('')
 }
 
