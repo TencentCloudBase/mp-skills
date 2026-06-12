@@ -37,7 +37,7 @@ export async function newCommand(name: string): Promise<void> {
 
   log(`\n[OK] 项目已创建: ${name}`)
   log(`   cd ${name}`)
-  log(`     编辑 project.config.json，将 appid 替换为你的小程序 AppID`)
+  log(`     在 project.config.json 中填写 appid（微信公众平台获取）`)
   log(`   npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill <skill-name>`)
   log(`   或查看 docs/SKILL-DEV-GUIDE.md`)
 
