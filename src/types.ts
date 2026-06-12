@@ -82,6 +82,7 @@ export interface SkillCloudbaserc {
 
 export interface ProjectCloudbaserc {
   version: string
+  envId?: string
   functions: Required<SkillFunctionConfig>[]
   database?: {
     collections: Required<NonNullable<SkillCloudbaserc['database']>>['collections']

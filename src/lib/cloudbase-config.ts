@@ -17,11 +17,31 @@ interface CollectionEntry {
 }
 
 /**
+ * 从 project.config.json 获取 cloudfunctionRoot 的相对路径，
+ * 用于计算合并后每个云函数的 dir 字段。
+ * 没有配置时默认 fallback 为 "cloudfunctions/"。
+ */
+function resolveFunctionDirBase(projectPath: string): string {
+  const configPath = join(projectPath, 'project.config.json')
+  if (!existsSync(configPath)) return 'cloudfunctions'
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    if (typeof config?.cloudfunctionRoot === 'string' && config.cloudfunctionRoot) {
+      return config.cloudfunctionRoot.replace(/^[/\\]+/, '').replace(/[/\\]+$/, '')
+    }
+  } catch {
+    // 忽略
+  }
+  return 'cloudfunctions'
+}
+
+/**
  * 扫描并合并所有 Skill 的 cloudbaserc.json，生成项目级 cloudbaserc.json
  */
 export function mergeSkillCloudbaserc(projectPath: string): ProjectCloudbaserc {
   const mpRoot = resolveMiniprogramRoot(projectPath)
   const skillsDir = mpRoot ? join(mpRoot, 'skills') : join(projectPath, 'skills')
+  const funcDirBase = resolveFunctionDirBase(projectPath)
 
   const funcMap = new Map<string, SkillFunctionConfig>()
   const colMap = new Map<string, CollectionEntry>()
@@ -72,19 +92,25 @@ export function mergeSkillCloudbaserc(projectPath: string): ProjectCloudbaserc {
 
   const result: ProjectCloudbaserc = {
     version: '2.0',
-    functions: Array.from(funcMap.values()).map((f) => ({
-      name: f.name,
-      type: f.type || 'event',
-      timeout: f.timeout ?? 30,
-      handler: f.handler || 'index.main',
-      runtime: f.runtime || 'Nodejs18.15',
-      memorySize: f.memorySize ?? 256,
-      installDependency: f.installDependency ?? true,
-      dir: f.dir || `cloudfunctions/${f.name}`,
-      envVariables: f.envVariables || {},
-      triggers: f.triggers || [],
-      ignore: f.ignore || ['node_modules', '.git'],
-    })),
+    envId: '{{env.ENV_ID}}',
+    functions: Array.from(funcMap.values()).map((f) => {
+      const isHttp = (f.type || 'event').toLowerCase() === 'http'
+      const fn: Record<string, unknown> = {
+        name: f.name,
+        timeout: f.timeout ?? 30,
+        handler: f.handler || 'index.main',
+        runtime: f.runtime || 'Nodejs18.15',
+        memorySize: f.memorySize ?? 256,
+        installDependency: f.installDependency ?? true,
+        dir: `${funcDirBase}/${f.name}`,
+        envVariables: f.envVariables || {},
+        triggers: f.triggers || [],
+        ignore: f.ignore || ['node_modules', '.git'],
+      }
+      // Event 函数不传 type（CLI 默认），HTTP 函数传 "HTTP"
+      if (isHttp) fn.type = 'HTTP'
+      return fn as Required<SkillFunctionConfig>
+    }),
   }
 
   if (colMap.size > 0) {
