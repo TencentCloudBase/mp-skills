@@ -3,6 +3,7 @@ import { program } from 'commander'
 import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
 import { ENV } from './lib/llm-credentials.js'
+import { showBanner } from './lib/banner.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -29,6 +30,9 @@ function track(name: string, fn: (...args: any[]) => Promise<void>) {
 }
 
 program.name('mp-skills').description('微信小程序 AI Skills 管理工具').version(version)
+
+// ── CLI Banner（仅 help/version 时显示）──
+program.addHelpText('beforeAll', showBanner)
 
 // ── add — 安装 Skill ─────────────────────────────────
 program
