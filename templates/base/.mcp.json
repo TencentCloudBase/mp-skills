@@ -1,8 +1,11 @@
 {
-  "skills": ["cloudbase"],
-  "tools": {
+  "mcpServers": {
     "cloudbase": {
-      "url": "https://cnb.cool/tencent/cloud/cloudbase/cloudbase-skills/-/git/raw/main/.mcp.json"
+      "command": "npx",
+      "args": ["@cloudbase/cloudbase-mcp@latest"],
+      "env": {
+        "INTEGRATION_IDE": "mp"
+      }
     }
   }
 }

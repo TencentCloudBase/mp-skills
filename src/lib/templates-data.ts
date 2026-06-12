@@ -14,7 +14,7 @@ export const SKELETON: Record<string, string> = {
 }
 
 export const BASE: Record<string, string> = {
-  ".mcp.json": "{\n  \"skills\": [\"cloudbase\"],\n  \"tools\": {\n    \"cloudbase\": {\n      \"url\": \"https://cnb.cool/tencent/cloud/cloudbase/cloudbase-skills/-/git/raw/main/.mcp.json\"\n    }\n  }\n}\n",
+  ".mcp.json": "{\n  \"mcpServers\": {\n    \"cloudbase\": {\n      \"command\": \"npx\",\n      \"args\": [\"@cloudbase/cloudbase-mcp@latest\"],\n      \"env\": {\n        \"INTEGRATION_IDE\": \"mp\"\n      }\n    }\n  }\n}\n",
   "README.md": "# AI 小程序\n\n由 [mp-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 创建。\n\n## 快速开始\n\n1. 在 `project.config.json` 中填写 `appid`\n2. 在 `miniprogram/app.js` 中填写云开发环境 ID\n3. 添加 AI Skill: `mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill drink-skill`\n4. 用微信开发者工具打开项目\n5. 参考 `docs/SKILL-DEV-GUIDE.md` 开发你的 Skill\n",
   "cloudfunctions/getOpenId/index.js": "const cloud = require('wx-server-sdk')\ncloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })\n\nexports.main = async (event, context) => {\n  const { OPENID, APPID } = cloud.getWXContext()\n  return { openid: OPENID, appid: APPID }\n}\n",
   "cloudfunctions/getOpenId/package.json": "{\n  \"name\": \"getOpenId\",\n  \"version\": \"1.0.0\",\n  \"main\": \"index.js\",\n  \"dependencies\": {\n    \"wx-server-sdk\": \"latest\"\n  }\n}\n",
