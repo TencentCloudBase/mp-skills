@@ -91,11 +91,7 @@ export function opencodeModelArg(creds: LlmCredentials): string {
  * 与 runOpencode（run 模式、捕获 NDJSON）不同：这里不解析事件流，
  * 因为 TUI 自己负责渲染界面。
  */
-export function runOpencodeInteractive(
-  bin: string,
-  args: string[],
-  env: NodeJS.ProcessEnv,
-): Promise<number> {
+export function runOpencodeInteractive(bin: string, args: string[], env: NodeJS.ProcessEnv): Promise<number> {
   return new Promise((resolvePromise) => {
     const child = spawn(bin, args, {
       env,

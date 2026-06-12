@@ -100,9 +100,7 @@ export async function doctorCommand(projectDir: string): Promise<void> {
   // ── 汇总 ──
   const deployedFuncs = deployed?.cloudfunctions || []
   const missingFuncs = funcs.filter((f) => !deployedFuncs.includes(f.name))
-  const missingCols = Array.from(allCollections.keys()).filter(
-    (c) => !deployed?.collections?.includes(c),
-  )
+  const missingCols = Array.from(allCollections.keys()).filter((c) => !deployed?.collections?.includes(c))
 
   const issues = missingFuncs.length + missingCols.length
   if (issues > 0) {

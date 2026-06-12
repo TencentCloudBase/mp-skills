@@ -71,7 +71,7 @@ export function mergeSkillCloudbaserc(projectPath: string): ProjectCloudbaserc {
         const existing = colMap.get(col.name)
         if (existing) {
           // 合并 indexes（按 field 去重，支持 string 和 string[]）
-          const existingFields = new Set(existing.indexes.map(i => JSON.stringify(i.field)))
+          const existingFields = new Set(existing.indexes.map((i) => JSON.stringify(i.field)))
           for (const idx of col.indexes || []) {
             if (!existingFields.has(JSON.stringify(idx.field))) {
               existing.indexes.push(idx)
@@ -143,7 +143,11 @@ function resolveEnvVars(value: string): string {
  * @param envIdOverride 已解析的环境 ID（如已由 setup 交互选择），
  *                      提供时跳过 {{env.ENV_ID}} 插值
  */
-export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = false, envIdOverride?: string): string | null {
+export function writeProjectCloudbaserc(
+  projectPath: string,
+  dryRun: boolean = false,
+  envIdOverride?: string,
+): string | null {
   const merged = mergeSkillCloudbaserc(projectPath)
 
   if (merged.functions.length === 0 && !merged.database) {
@@ -162,7 +166,6 @@ export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = f
   writeFileSync(destPath, content, 'utf-8')
   return destPath
 }
-
 
 /**
  * 将环境 ID 写入共享配置 config.js，供 cloud-middleware 读取。

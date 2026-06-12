@@ -87,10 +87,7 @@ describe('createCommand (Skill 骨架创建)', () => {
       try {
         await createCommand('foo', { scenario: 'bar' })
         // 不抛异常，只警告并 return
-        assert.ok(
-          !existsSync(join(projectDir, 'miniprogram', 'skills', 'foo')),
-          '未应创建 Skill 目录',
-        )
+        assert.ok(!existsSync(join(projectDir, 'miniprogram', 'skills', 'foo')), '未应创建 Skill 目录')
       } finally {
         process.chdir(origCwd)
       }
@@ -101,10 +98,7 @@ describe('createCommand (Skill 骨架创建)', () => {
       process.chdir(projectDir)
       try {
         await createCommand('bar', { query: 'do x' })
-        assert.ok(
-          !existsSync(join(projectDir, 'miniprogram', 'skills', 'bar')),
-          '未应创建 Skill 目录',
-        )
+        assert.ok(!existsSync(join(projectDir, 'miniprogram', 'skills', 'bar')), '未应创建 Skill 目录')
       } finally {
         process.chdir(origCwd)
       }
@@ -115,10 +109,7 @@ describe('createCommand (Skill 骨架创建)', () => {
       process.chdir(projectDir)
       try {
         await createCommand('baz', { nonInteractive: true })
-        assert.ok(
-          !existsSync(join(projectDir, 'miniprogram', 'skills', 'baz')),
-          '未应创建 Skill 目录',
-        )
+        assert.ok(!existsSync(join(projectDir, 'miniprogram', 'skills', 'baz')), '未应创建 Skill 目录')
       } finally {
         process.chdir(origCwd)
       }

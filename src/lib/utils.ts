@@ -133,10 +133,7 @@ export function resolveCloudfunctionRoot(projectPath: string): string | null {
  * 如果已存在则保留原值，没有则写入默认值 "cloudfunctions/"。
  * 返回 true 表示写入过（新增），false 表示已存在无需写入。
  */
-export function ensureCloudfunctionRoot(
-  projectPath: string,
-  defaultValue: string = 'cloudfunctions/',
-): boolean {
+export function ensureCloudfunctionRoot(projectPath: string, defaultValue: string = 'cloudfunctions/'): boolean {
   const configPath = join(projectPath, 'project.config.json')
   if (!existsSync(configPath)) return false
   try {

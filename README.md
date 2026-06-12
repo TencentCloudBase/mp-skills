@@ -1,5 +1,20 @@
 # mp-skills
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/mp-skills">
+    <img src="https://img.shields.io/npm/v/mp-skills.svg?style=flat-square" alt="npm version" />
+  </a>
+  <a href="https://www.npmjs.com/package/mp-skills">
+    <img src="https://img.shields.io/npm/dm/mp-skills.svg?style=flat-square" alt="npm downloads" />
+  </a>
+  <a href="https://github.com/TencentCloudBase/mp-skills/blob/main/LICENSE">
+    <img src="https://img.shields.io/npm/l/mp-skills.svg?style=flat-square" alt="license" />
+  </a>
+  <a href="https://nodejs.org/">
+    <img src="https://img.shields.io/node/v/mp-skills?style=flat-square" alt="node version" />
+  </a>
+</p>
+
 让微信小程序接入 AI 生态——为小程序安装 `wx.modelContext` Skill，构建 AI 友好的小程序。
 
 ```bash
@@ -57,8 +72,6 @@ npx mp-skills setup
 | `execute`    | 执行 Skill 的原子接口                                     |
 | `render`     | 渲染 Skill 的原子组件                                     |
 | `setup`      | 一站式环境搭建：聚合云函数、创建集合、检查服务             |
-| `status`     | 查看云函数/数据库/服务的状态差异                           |
-| `doctor`     | 健康检查：检测云函数联通性、数据库集合、服务配置            |
 | `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） |
 
 ---
@@ -242,48 +255,6 @@ npx mp-skills setup --env-id your-env-id
 | `--env-id <id>`            | 云开发环境 ID（未指定则从项目配置读取）                 |
 
 安装 Skill 后运行 `setup` 可自动完成所有云开发基础设施的部署。
-
----
-
-### status
-
-查看云函数、数据库、服务的状态差异（基于锁文件与 Skill 声明的对比）。
-
-```bash
-npx mp-skills status
-```
-
-输出示例：
-```
-云函数
-────────────────────────────────────────
-  ok    drink-skill-xxxx
-  --    payment-skill-xxxx [HTTP，需 CLI 部署]
-  已部署 1 个，待处理 1 个
-
-数据库
-────────────────────────────────────────
-  ok    drinks
-  --    orders [drink-skill, payment-skill]
-  已创建 1 个，待处理 1 个
-
-服务
-────────────────────────────────────────
-  ok    HTTP 访问服务
-  ok    AI 模型
-
-运行 npx mp-skills setup 处理待办项。
-```
-
----
-
-### doctor
-
-健康检查：实际调用 CloudBase API 检测云函数联通性、数据库集合和服务配置。
-
-```bash
-npx mp-skills doctor
-```
 
 ---
 

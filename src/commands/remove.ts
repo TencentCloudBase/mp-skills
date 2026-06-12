@@ -66,9 +66,7 @@ function cleanupAppJson(appJsonPath: string, skillName?: string): void {
   // 移除指定 Skill 或全部
   if (app.agent?.skills) {
     if (skillName) {
-      app.agent.skills = app.agent.skills.filter(
-        (s: { path: string }) => s.path !== `skills/${skillName}`,
-      )
+      app.agent.skills = app.agent.skills.filter((s: { path: string }) => s.path !== `skills/${skillName}`)
     } else {
       app.agent.skills = []
     }
@@ -85,9 +83,7 @@ function cleanupAppJson(appJsonPath: string, skillName?: string): void {
 
   // subPackages 中 skills 入口 → 无 Skill 时移除
   if (app.subPackages) {
-    app.subPackages = app.subPackages.filter(
-      (p: { root: string; name: string }) => p.name !== 'skills',
-    )
+    app.subPackages = app.subPackages.filter((p: { root: string; name: string }) => p.name !== 'skills')
     if (app.subPackages.length === 0) {
       delete app.subPackages
     }

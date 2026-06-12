@@ -23,9 +23,7 @@ export function installSkill(
   const skillName = opts.skillName || skillPath.split('/').pop() || 'unknown'
   const mpRoot = resolveMiniprogramRoot(projectPath)
   if (!mpRoot) {
-    throw new Error(
-      '未找到 app.json，请确认 project.config.json 的 miniprogramRoot 配置或项目结构',
-    )
+    throw new Error('未找到 app.json，请确认 project.config.json 的 miniprogramRoot 配置或项目结构')
   }
 
   const relRoot = relative(projectPath, mpRoot) || '.'
@@ -71,7 +69,7 @@ export function installSkill(
   })
 
   console.log('   * 已记录版本')
-  _setupHintShown = false  // 重置标记，让下次 install 重新提示
+  _setupHintShown = false // 重置标记，让下次 install 重新提示
   return { skillName, targetDir }
 }
 

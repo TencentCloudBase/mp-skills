@@ -82,4 +82,3 @@ function findNpmGlobalScript(): string | null {
   }
   return null
 }
-

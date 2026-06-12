@@ -90,11 +90,9 @@ async function downloadSkill(skillName: string, verifySubpath: string): Promise<
 
   const tempDir = join(GLOBAL_SKILLS_DIR, `.${skillName}-tmp`)
   try {
-    const cloneResult = spawnSync(
-      'git',
-      ['clone', '--depth', '1', '--single-branch', SKILLS_REPO_URL, tempDir],
-      { stdio: 'pipe' },
-    )
+    const cloneResult = spawnSync('git', ['clone', '--depth', '1', '--single-branch', SKILLS_REPO_URL, tempDir], {
+      stdio: 'pipe',
+    })
     if (cloneResult.status !== 0) {
       warn(`git clone 失败: ${cloneResult.stderr?.toString() || 'unknown error'}`)
       return null

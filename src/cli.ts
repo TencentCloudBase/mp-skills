@@ -28,10 +28,7 @@ function track(name: string, fn: (...args: any[]) => Promise<void>) {
   }
 }
 
-program
-  .name('mp-skills')
-  .description('微信小程序 AI Skills 管理工具')
-  .version(version)
+program.name('mp-skills').description('微信小程序 AI Skills 管理工具').version(version)
 
 // ── add — 安装 Skill ─────────────────────────────────
 program

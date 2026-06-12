@@ -89,10 +89,7 @@ async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
 
 function matchSkill(skill: SkillEntry, query: string): boolean {
   const q = query.toLowerCase()
-  return (
-    skill.name.toLowerCase().includes(q) ||
-    skill.description.toLowerCase().includes(q)
-  )
+  return skill.name.toLowerCase().includes(q) || skill.description.toLowerCase().includes(q)
 }
 
 // ── 非交互模式（有关键词或非 TTY） ──

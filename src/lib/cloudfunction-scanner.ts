@@ -33,9 +33,7 @@ export function scanCloudFunctions(projectPath: string): CloudFunctionInfo[] {
     const skillCloudbasercPath = join(skillsDir, skillName, 'cloudbaserc.json')
     const skillFunctions = loadSkillCloudbasercFunctions(skillCloudbasercPath)
 
-    const funcDirs = readdirSync(cfRoot, { withFileTypes: true }).filter(
-      (e: Dirent) => e.isDirectory(),
-    )
+    const funcDirs = readdirSync(cfRoot, { withFileTypes: true }).filter((e: Dirent) => e.isDirectory())
 
     for (const funcDir of funcDirs) {
       const funcPath = join(cfRoot, funcDir.name)
@@ -49,8 +47,7 @@ export function scanCloudFunctions(projectPath: string): CloudFunctionInfo[] {
       const matched = skillFunctions?.find((f) => f.name === funcName)
 
       // 从 Skill 级 cloudbaserc 读取配置，回退到 index.js 注释检测 type
-      const funcType: CloudFunctionType =
-        matched?.type === 'http' ? 'http' : detectFunctionTypeByEntry(entryJs)
+      const funcType: CloudFunctionType = matched?.type === 'http' ? 'http' : detectFunctionTypeByEntry(entryJs)
 
       results.push({
         name: funcName,

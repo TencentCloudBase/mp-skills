@@ -30,11 +30,7 @@ export function readLock(projectPath: string): {
 /**
  * 写入锁文件
  */
-export function writeLock(
-  projectPath: string,
-  skills: LockEntry[],
-  deployed?: DeployedState,
-): void {
+export function writeLock(projectPath: string, skills: LockEntry[], deployed?: DeployedState): void {
   const lockPath = join(projectPath, LOCK_FILE)
   const lock: Record<string, unknown> = { version: 2, skills }
   if (deployed) {
@@ -70,10 +66,7 @@ export function removeLockEntry(projectPath: string, name: string): void {
 /**
  * 更新部署状态
  */
-export function updateDeployedState(
-  projectPath: string,
-  deployed: DeployedState,
-): void {
+export function updateDeployedState(projectPath: string, deployed: DeployedState): void {
   const lock = readLock(projectPath)
   lock.deployed = deployed
   lock.lastSetup = new Date().toISOString()

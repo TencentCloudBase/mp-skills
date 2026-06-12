@@ -49,8 +49,7 @@ export interface RunAiGenerateArgs {
 }
 
 export async function runAiGenerate(args: RunAiGenerateArgs): Promise<void> {
-  const { projectPath, miniprogramRoot, outputPath, name, env, scenario, provider, model, query, nonInteractive } =
-    args
+  const { projectPath, miniprogramRoot, outputPath, name, env, scenario, provider, model, query, nonInteractive } = args
 
   // 入参契约：路径必须绝对 + miniprogramRoot 必须含 app.json。
   // 这些条件由调用方（create.ts）保证；这里做最后一道防线，配置错误时立即失败而非生成假产物。
@@ -170,13 +169,7 @@ async function runInteractive(
   env: NodeJS.ProcessEnv,
   initialMessage: string,
 ): Promise<void> {
-  const args = [
-    outputPath,
-    '--model',
-    opencodeModelArg(creds),
-    '--prompt',
-    initialMessage,
-  ]
+  const args = [outputPath, '--model', opencodeModelArg(creds), '--prompt', initialMessage]
 
   const exitCode = await runOpencodeInteractive(bin, args, env)
   log('')

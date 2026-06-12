@@ -44,10 +44,12 @@ export function scanCollections(projectPath: string): MergedCollection[] {
           }
           for (const idx of col.indexes || []) {
             const field = Array.isArray(idx.field) ? idx.field.join(',') : idx.field
-            if (!existing.indexes.some((e) => {
-              const ef = Array.isArray(e.field) ? e.field.join(',') : e.field
-              return ef === field
-            })) {
+            if (
+              !existing.indexes.some((e) => {
+                const ef = Array.isArray(e.field) ? e.field.join(',') : e.field
+                return ef === field
+              })
+            ) {
               existing.indexes.push(idx)
             }
           }
@@ -90,10 +92,12 @@ export function generateCollectionGuides(collections: MergedCollection[]): strin
       lines.push(`    权限：${col.aclTag}`)
     }
     if (col.indexes.length > 0) {
-      const idxList = col.indexes.map((i) => {
-        const f = Array.isArray(i.field) ? i.field.join(',') : i.field
-        return `\`${f}\``
-      }).join(', ')
+      const idxList = col.indexes
+        .map((i) => {
+          const f = Array.isArray(i.field) ? i.field.join(',') : i.field
+          return `\`${f}\``
+        })
+        .join(', ')
       lines.push(`    索引：${idxList}`)
     }
   }

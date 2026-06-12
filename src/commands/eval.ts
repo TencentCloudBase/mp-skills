@@ -282,9 +282,7 @@ function buildEvalPrompt(args: {
   const { evalCliPath, projectPath, cases, skill, headless } = args
   const caseCount = cases ?? '1'
 
-  const skillScopeLine = skill
-    ? `- 仅评测指定 Skill（\`--skills\`）：${skill}`
-    : '- 评测全部 Skill（不传 `--skills`）'
+  const skillScopeLine = skill ? `- 仅评测指定 Skill（\`--skills\`）：${skill}` : '- 评测全部 Skill（不传 `--skills`）'
 
   const runModeLine = headless
     ? '- 运行模式：headless（CI，加 `--headless`）'

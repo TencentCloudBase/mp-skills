@@ -313,8 +313,8 @@ async function setupServices(projectPath: string, _envId: string, step: string):
 
   const funcs = scanCloudFunctions(projectPath)
   const hasHttpFunc = funcs.some((f) => f.type === 'http')
-  const hasAISkill = ['text-gen-skill', 'image-gen-skill', 'image-edit-skill'].some(
-    (s) => existsSync(`${projectPath}/skills/${s}`),
+  const hasAISkill = ['text-gen-skill', 'image-gen-skill', 'image-edit-skill'].some((s) =>
+    existsSync(`${projectPath}/skills/${s}`),
   )
 
   let found = false
@@ -349,10 +349,7 @@ async function setupServices(projectPath: string, _envId: string, step: string):
   console.log('')
 }
 
-function updateDeployedIfChanged(
-  projectPath: string,
-  patch: Partial<DeployedState>,
-): void {
+function updateDeployedIfChanged(projectPath: string, patch: Partial<DeployedState>): void {
   const current = readDeployedState(projectPath) || { cloudfunctions: [], collections: [], services: [] }
   const merged: DeployedState = {
     cloudfunctions: patch.cloudfunctions || current.cloudfunctions,
@@ -367,16 +364,16 @@ function updateDeployedIfChanged(
  */
 function readEnvIdFromProject(projectPath: string): string | null {
   // 尝试项目级 cloudbaserc.json
-  const paths = [
-    resolve(projectPath, 'cloudbaserc.json'),
-    resolve(projectPath, 'miniprogram', 'cloudbaserc.json'),
-  ]
+  const paths = [resolve(projectPath, 'cloudbaserc.json'), resolve(projectPath, 'miniprogram', 'cloudbaserc.json')]
   for (const p of paths) {
     try {
       const json = JSON.parse(readFileSync(p, 'utf-8'))
       if (json.envId) {
         // 解析 {{env.XXX}} 插值
-        const resolved = String(json.envId).replace(/\{\{env\.(\w+)\}\}/g, (_, name) => process.env[name] || `{{env.${name}}}`)
+        const resolved = String(json.envId).replace(
+          /\{\{env\.(\w+)\}\}/g,
+          (_, name) => process.env[name] || `{{env.${name}}}`,
+        )
         if (resolved !== json.envId && resolved.includes('{{env.')) {
           console.warn('  [WARN]  环境变量 ENV_ID 未设置，保留插值。可通过 --env-id 参数指定')
         }
