@@ -2,7 +2,7 @@
   "description": "AI 小程序 — 由 mp-skills 创建",
   "miniprogramRoot": "miniprogram/",
   "appid": "tourist",
-  "libVersion": "3.16.1",
+  "libVersion": "trial",
   "packOptions": {
     "include": [{ "type": "folder", "value": "skills" }]
   },
