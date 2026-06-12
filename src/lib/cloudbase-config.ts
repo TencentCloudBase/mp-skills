@@ -3,7 +3,7 @@
 // 合并 functions + database.collections 到项目级 cloudbaserc.json，
 // 供 tcb fn deploy 和 manageFunctions MCP 直接使用
 
-import { existsSync, readFileSync, writeFileSync, readdirSync, type Dirent } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, type Dirent } from 'node:fs'
 import { join } from 'node:path'
 import type { SkillCloudbaserc, ProjectCloudbaserc, SkillFunctionConfig } from '../types.js'
 import { resolveMiniprogramRoot } from './utils.js'
@@ -161,4 +161,37 @@ export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = f
 
   writeFileSync(destPath, content, 'utf-8')
   return destPath
+}
+
+
+/**
+ * 将环境 ID 写入共享配置 config.js，供 cloud-middleware 读取。
+ * 路径：<mpRoot>/skills/_shared/mp-skills-shared/config.js
+ */
+export function writeSharedConfig(projectPath: string, envId: string): boolean {
+  const mpRoot = resolveMiniprogramRoot(projectPath)
+  if (!mpRoot) return false
+
+  const configPath = join(projectPath, mpRoot, 'skills', '_shared', 'mp-skills-shared', 'config.js')
+  const dir = join(configPath, '..')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+
+  const tmpl = [
+    '/**',
+    ' * 云开发环境配置',
+    ' *',
+    ' * 由 mp-skills setup 自动写入，各共享模块从此文件读取。',
+    ' * 如手动修改，请保持 JSON 格式。',
+    ' */',
+    'module.exports = {',
+    '  CLOUD_ENV_ID: ' + JSON.stringify(envId) + ',',
+    '}',
+    '',
+  ].join('
+')
+
+  writeFileSync(configPath, tmpl, 'utf-8')
+  return true
 }
