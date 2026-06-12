@@ -38,6 +38,54 @@ export interface CloudFunctionInfo {
   type: CloudFunctionType
   sourcePath: string
   hasCloudbaserc: boolean
+  /** 从 skill 级 cloudbaserc.json 读取的配置（有云函数时） */
+  timeout?: number
+  handler?: string
+  runtime?: string
+  memorySize?: number
+  installDependency?: boolean
+  dir?: string
+  envVariables?: Record<string, string>
+}
+
+// ── Skill 级 cloudbaserc.json 中的 function 条目 ──
+
+export interface SkillFunctionConfig {
+  name: string
+  type?: string
+  timeout?: number
+  handler?: string
+  runtime?: string
+  memorySize?: number
+  installDependency?: boolean
+  dir?: string
+  envVariables?: Record<string, string>
+  triggers?: unknown[]
+  ignore?: string[]
+}
+
+// ── Skill 级 cloudbaserc.json 完整格式 ──
+
+export interface SkillCloudbaserc {
+  version: string
+  functions?: SkillFunctionConfig[]
+  database?: {
+    collections?: Array<{
+      name: string
+      description: string
+      indexes?: Array<{ field: string; unique?: boolean }>
+    }>
+  }
+}
+
+// ── 项目级 cloudbaserc.json 合并结果 ──
+
+export interface ProjectCloudbaserc {
+  version: string
+  functions: Required<SkillFunctionConfig>[]
+  database?: {
+    collections: Required<NonNullable<SkillCloudbaserc['database']>>['collections']
+  }
 }
 
 // ── 数据库集合声明 ──

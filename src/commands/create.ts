@@ -65,11 +65,12 @@ export async function createCommand(name?: string): Promise<void> {
 
   log(`\n📦 已创建 Skill: ${skillName}`)
   ok(`${mpRoot}/skills/${skillName}/`)
-  ok(`  mcp.json      — 定义 API 接口`)
-  ok(`  SKILL.md      — 编排业务流程`)
-  ok(`  index.js      — 注册入口`)
-  ok(`  apis/         — 原子接口实现`)
-  ok(`  components/   — 原子组件`)
+  ok(`  cloudbaserc.json — 云资源声明（云函数配置 + 数据库集合）`)
+  ok(`  mcp.json         — 定义 API 接口`)
+  ok(`  SKILL.md         — 编排业务流程`)
+  ok(`  index.js         — 注册入口`)
+  ok(`  apis/            — 原子接口实现`)
+  ok(`  components/      — 原子组件`)
 
   // 询问是否注入到 app.json（仅当未提供 name 时交互式确认）
   if (!name && process.stdin.isTTY) {

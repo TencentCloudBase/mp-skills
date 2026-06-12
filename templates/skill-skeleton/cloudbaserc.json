@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "functions": [
+    {
+      "name": "my-skill-handler",
+      "type": "event",
+      "timeout": 30,
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "memorySize": 256,
+      "installDependency": true,
+      "dir": "cloudfunctions/my-skill-handler",
+      "envVariables": {},
+      "ignore": [
+        "node_modules",
+        ".git"
+      ]
+    }
+  ],
+  "database": {
+    "collections": [
+      {
+        "name": "my_collection",
+        "description": "集合说明",
+        "indexes": []
+      }
+    ]
+  }
+}

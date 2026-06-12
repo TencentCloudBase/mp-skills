@@ -4,6 +4,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
+import { mergeSkillCloudbaserc, writeProjectCloudbaserc } from '../lib/cloudbase-config.js'
 import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
 import { scanCollections, scanSharedCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
@@ -75,6 +76,15 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
     if (ensureCloudfunctionRoot(projectPath)) {
       console.log(`  已添加 cloudfunctionRoot 配置`)
     }
+  }
+
+  // 合并 Skill 级 cloudbaserc.json → 项目级 cloudbaserc.json
+  const mergedPath = writeProjectCloudbaserc(projectPath)
+  if (mergedPath) {
+    console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
+  } else if (funcs.length > 0) {
+    // 有云函数但 cloudbaserc 为空（理论上不会发生，兜底提示）
+    console.log(`  ⚠️  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
   }
 
   const events = funcs.filter((f) => f.type === 'event')
