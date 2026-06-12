@@ -44,7 +44,6 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 | `validate` | 静态校验 (需 wxa-skills-validate)                          |
 | `execute`  | 执行原子接口                                               |
 | `render`   | 渲染原子组件                                               |
-| `gen`      | 分析已有小程序项目，调用 opencode 生成 Skill 分包          |
 | `eval`     | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） |
 
 ### add
@@ -108,18 +107,6 @@ npx mp-skills update
 npx mp-skills update drink-skill payment-skill
 ```
 
-### create
-
-在已有小程序项目中创建一个新的 Skill 骨架。
-
-```bash
-cd my-project
-npx mp-skills create weather-skill     # 指定名称创建
-npx mp-skills create                   # 交互式输入名称
-```
-
-Skill 被创建在 `miniprogram/skills/<name>/`（根据 `project.config.json` 的 `miniprogramRoot` 自动适配）。生成后可用 `mp-skills add ./<name>` 安装到其他项目。
-
 ### new
 
 创建一个新的小程序项目，含 AI Skill 支持的基础配置。
@@ -130,54 +117,43 @@ cd my-app
 npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s drink-skill
 ```
 
-### gen
+### create
 
-分析一个**已有的**小程序项目，调用 [opencode](https://github.com/sst/opencode) 自动生成符合 `wx.modelContext` 规范的 Skill 分包。gen 是一个「面向 Skill 生成任务的 agent 代理」：预置好 system prompt 与 `wxa-skills-generate` / `wxa-skills-validate` 两个官方 skill，默认进入**交互式多轮会话**，模型自主「读项目 → 生成 → 校验 → 修复」，随时 `Ctrl+C` 退出。生成过程**只读源项目、不修改**，产物默认写入小程序的 miniprogram root，也可通过 `-o` 指定输出目录。
+在当前小程序项目中创建一个新的 Skill。**默认走本地模板复制**；显式 `--ai` 时调用 [opencode](https://github.com/sst/opencode) 让大模型分析项目并生成符合规范的 Skill 分包。
 
 ```bash
-# 未配置凭证时会弹出交互式向导（见下方「LLM 凭证」）；
-# 也可直接用环境变量预先配置好：
-export OPENAI_BASE_URL=https://api.deepseek.com/v1
-export OPENAI_API_KEY=sk-xxxx
-export OPENAI_MODEL=deepseek-chat
+# 模板模式：拷贝模板到 <miniprogramRoot>/skills/<name>/
+cd ./my-miniprogram
+npx mp-skills create my-skill
 
-npx mp-skills gen ./my-miniprogram \
-  -o ./generated \
+# AI 模式：进入 opencode 多轮会话，生成并自校验
+cd ./my-miniprogram
+npx mp-skills create my-skill --ai \
   -s "咖啡点单、订单管理"
+
+# AI 模式 + 在已有 Skill 上迭代（同名再跑一次即可，agent 会做增量修改）
+npx mp-skills create my-skill --ai \
+  -q "createOrder 接口缺少 amount 字段"
+
+# AI 模式 + 不指定 name：扫描整个项目，agent 自决要生成哪些 Skill
+npx mp-skills create --ai
 ```
 
 | 选项                    | 说明                                                                 |
 | ----------------------- | -------------------------------------------------------------------- |
-| `-o, --output <dir>`    | 输出目录（默认使用小程序的 miniprogram root）                        |
-| `-s, --scenario <desc>` | 业务场景描述，帮助模型聚焦（如：商品检索、订单管理）                 |
-| `-q, --query <text>`    | 本轮诉求；在已有产物上迭代时尤其有用（如：`xxx 接口返回字段不对`）   |
-| `-p, --provider <name>` | LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model |
-| `-m, --model <name>`    | 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL`，回退 `gpt-4o`       |
-| `-e, --env <envId>`     | CloudBase 环境 ID（透传给下游，可选）                                |
-| `-n, --non-interactive` | 非交互模式：一次性跑完，适合脚本 / CI                                |
+| `--ai`                  | 使用大模型辅助生成 Skill（默认走模板）                               |
+| `-s, --scenario <desc>` | [--ai] 业务场景描述，帮助模型聚焦（如：商品检索、订单管理）          |
+| `-q, --query <text>`    | [--ai] 本轮诉求；在已有产物上迭代时尤其有用                          |
+| `-p, --provider <name>` | [--ai] LLM 提供方预设（deepseek / glm / kimi / minimax）             |
+| `-m, --model <name>`    | [--ai] 模型名，覆盖 `--provider` 预设与 `OPENAI_MODEL`               |
+| `-e, --env <envId>`     | [--ai] CloudBase 环境 ID（可选）                                     |
+| `-n, --non-interactive` | [--ai] 非交互模式：一次性跑完，适合脚本 / CI                         |
 
-源项目的 `app.json` 位置自动识别：优先读 `project.config.json` 的 `miniprogramRoot`，否则回退根目录或 `miniprogram/`。
-
-**在已有 Skill 上迭代**：生成关闭后去测试，发现问题再回来继续改——直接对同一输出目录再跑一次 gen 即可。gen 会自动检测输出目录里已有的 Skill 产物，进入「增量迭代」模式（在已有产物上改，不推倒重来）。配合 `-q` 直接下达本轮诉求：
-
-```bash
-# 第一次：从源项目生成（输出到 miniprogram root，无需 -o）
-npx mp-skills gen ./my-miniprogram
-
-# 或指定输出目录（继续在已有产物上迭代）
-npx mp-skills gen ./my-miniprogram -o ./generated
-
-# …去测试，发现某接口有 bug…
-
-# 再次迭代：在 ./generated 已有产物上修复指定问题
-npx mp-skills gen ./my-miniprogram -o ./generated \
-  -q "order-skill 的 createOrder 接口缺少 amount 字段"
-```
-
+> AI 模式需要 `opencode-ai` + 一组 OpenAI 兼容凭据。详见下方「LLM 凭证」。
 
 ### eval
 
-对一个**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。
+对当前目录下**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。也可显式传入项目路径。
 
 ```bash
 export OPENAI_BASE_URL=https://api.deepseek.com/v1
@@ -185,10 +161,10 @@ export OPENAI_API_KEY=sk-xxxx
 export OPENAI_MODEL=deepseek-chat
 
 # 默认 official 模式
-npx mp-skills eval ./my-miniprogram -c 3
+npx mp-skills eval -c 3
 
 # 使用 provider 预设，无需手动设置环境变量中的模型信息
-npx mp-skills eval ./my-miniprogram -p deepseek -m deepseek-v4-flash -c 3
+npx mp-skills eval -p deepseek -m deepseek-v4-flash -c 3
 ```
 
 | 选项                         | 说明                                                                                 |
@@ -210,14 +186,14 @@ npx mp-skills eval ./my-miniprogram -p deepseek -m deepseek-v4-flash -c 3
 
 ```bash
 # agent 模式
-npx mp-skills eval ./my-miniprogram --mode agent -c 3
+npx mp-skills eval --mode agent -c 3
 ```
 
 > 两种模式都依赖微信开发者工具（官方 CLI 的硬性要求）。
 
 ## LLM 凭证（BYOK）
 
-`gen` 与 `eval` 共用**同一套** OpenAI 兼容凭证，按以下优先级解析：
+`create --ai` 与 `eval` 共用**同一套** OpenAI 兼容凭证，按以下优先级解析：
 
 1. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` ← **推荐**
 2. `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`（或 `ANTHROPIC_API_KEY`） / `ANTHROPIC_MODEL`
@@ -227,7 +203,7 @@ npx mp-skills eval ./my-miniprogram --mode agent -c 3
 
 ### 交互式向导
 
-若运行 `gen`/`eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
+若运行 `create --ai`/`eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
 
 ```
 ? 请选择 LLM 提供方：
@@ -317,7 +293,7 @@ OPENAI_MODEL=deepseek-v4-flash
 - `https://api.deepseek.com` → `https://api.deepseek.com/v1`
 - `https://api.deepseek.com/anthropic` → `https://api.deepseek.com/v1`
 
-只需配置一组凭证即可同时驱动 `gen`（opencode）和 `eval`（wxa-skills-eval）。
+只需配置一组凭证即可同时驱动 `create --ai`（opencode）和 `eval`（wxa-skills-eval）。
 
 ## add 做了什么
 

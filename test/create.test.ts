@@ -76,4 +76,104 @@ describe('createCommand (Skill 骨架创建)', () => {
       }
     })
   })
+
+  describe('误用 --ai 专用 flag', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
+    const projectDir = createMiniProgramRootOnly(tmpDir)
+
+    it('未传 --ai 但传了 --scenario 时拒绝执行，不创建目录', async () => {
+      const origCwd = process.cwd()
+      process.chdir(projectDir)
+      try {
+        await createCommand('foo', { scenario: 'bar' })
+        // 不抛异常，只警告并 return
+        assert.ok(
+          !existsSync(join(projectDir, 'miniprogram', 'skills', 'foo')),
+          '未应创建 Skill 目录',
+        )
+      } finally {
+        process.chdir(origCwd)
+      }
+    })
+
+    it('未传 --ai 但传了 --query 时同样拒绝', async () => {
+      const origCwd = process.cwd()
+      process.chdir(projectDir)
+      try {
+        await createCommand('bar', { query: 'do x' })
+        assert.ok(
+          !existsSync(join(projectDir, 'miniprogram', 'skills', 'bar')),
+          '未应创建 Skill 目录',
+        )
+      } finally {
+        process.chdir(origCwd)
+      }
+    })
+
+    it('显式传 --non-interactive=true 但没有 --ai 时拒绝', async () => {
+      const origCwd = process.cwd()
+      process.chdir(projectDir)
+      try {
+        await createCommand('baz', { nonInteractive: true })
+        assert.ok(
+          !existsSync(join(projectDir, 'miniprogram', 'skills', 'baz')),
+          '未应创建 Skill 目录',
+        )
+      } finally {
+        process.chdir(origCwd)
+      }
+    })
+  })
+})
+
+describe('--ai 路由', () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'mp-skills-test-'))
+  const projectDir = createMiniProgramRootOnly(tmpDir)
+  const stubFile = join(tmpDir, 'ai-args.json')
+
+  it('给了 name 时 outputPath 指向 <mp>/skills/<name>/', async () => {
+    const origCwd = process.cwd()
+    const origStub = process.env.MP_SKILLS_AI_GENERATE_STUB
+    process.chdir(projectDir)
+    process.env.MP_SKILLS_AI_GENERATE_STUB = stubFile
+    try {
+      await createCommand('foo', { ai: true, query: 'q1', scenario: 's1' })
+      const args = JSON.parse(readFileSync(stubFile, 'utf-8'))
+      assert.equal(args.name, 'foo')
+      assert.equal(args.query, 'q1')
+      assert.equal(args.scenario, 's1')
+      assert.ok(
+        args.outputPath.endsWith('/miniprogram/skills/foo'),
+        `outputPath 应指向 <mp>/skills/foo，实际为 ${args.outputPath}`,
+      )
+      assert.ok(
+        args.miniprogramRoot.endsWith('/miniprogram'),
+        `miniprogramRoot 应指向 mp，实际为 ${args.miniprogramRoot}`,
+      )
+    } finally {
+      process.chdir(origCwd)
+      if (origStub === undefined) delete process.env.MP_SKILLS_AI_GENERATE_STUB
+      else process.env.MP_SKILLS_AI_GENERATE_STUB = origStub
+    }
+  })
+
+  it('未给 name 时 outputPath 指向 <mp>/skills/', async () => {
+    const origCwd = process.cwd()
+    const origStub = process.env.MP_SKILLS_AI_GENERATE_STUB
+    process.chdir(projectDir)
+    process.env.MP_SKILLS_AI_GENERATE_STUB = stubFile
+    try {
+      await createCommand(undefined, { ai: true })
+      const args = JSON.parse(readFileSync(stubFile, 'utf-8'))
+      assert.equal(args.name, undefined)
+      assert.ok(
+        args.outputPath.endsWith('/miniprogram/skills'),
+        `outputPath 应指向 <mp>/skills，实际为 ${args.outputPath}`,
+      )
+    } finally {
+      process.chdir(origCwd)
+      if (origStub === undefined) delete process.env.MP_SKILLS_AI_GENERATE_STUB
+      else process.env.MP_SKILLS_AI_GENERATE_STUB = origStub
+    }
+  })
 })

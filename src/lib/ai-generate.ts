@@ -1,73 +1,82 @@
-// ── gen 命令 ──
-// 把 gen 做成一个「面向 Skill 生成任务的 opencode 代理」：
-//   - 直接覆盖 opencode 主 agent（build）的 system prompt，预置目标 / 边界（不固定步骤）
-//   - 注册 wxa-skills-generate + wxa-skills-validate 两个官方 skill 给 opencode
-//   - 默认进入交互式 TUI，模型自主多轮「读项目 → 生成 → 校验 → 修复」
-//     用户随时 Ctrl+C 退出
-//   - --non-interactive 走 run 模式一次性跑完（脚本 / CI 兜底）
+// src/lib/ai-generate.ts
+// ── AI 辅助生成 Skill 的流程库 ──
+// 由 src/commands/create.ts 在 --ai 模式下调用。
+// 不解析 CLI 参数：调用方需把 projectPath / miniprogramRoot / outputPath / 可选 name 算好后传入。
 //
-// 鉴权：统一 BYOK——只需一套 OpenAI 兼容凭据（OPENAI_BASE_URL/_API_KEY/_MODEL）。
+// 鉴权：BYOK——OpenAI 兼容凭据（OPENAI_BASE_URL / _API_KEY / _MODEL）。
 
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
-import { resolve, join } from 'node:path'
-import { colors, kv, log, title, warn, resolveMiniprogramRoot } from '../lib/utils.js'
-import { trackCommand } from '../lib/telemetry.js'
-import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
-import { ensureSkill, globalSkillsRoot } from '../lib/skill-installer.js'
+import { isAbsolute, join } from 'node:path'
+import { colors, kv, log, title, warn } from './utils.js'
+import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from './llm-credentials.js'
+import { ensureSkill, globalSkillsRoot } from './skill-installer.js'
 import {
   resolveOpencodeBin,
   buildOpencodeConfig,
   opencodeModelArg,
   runOpencode,
   runOpencodeInteractive,
-} from '../lib/opencode.js'
+} from './opencode.js'
 
 const GENERATE_SKILL_NAME = 'wxa-skills-generate'
 const VALIDATE_SKILL_NAME = 'wxa-skills-validate'
 
-interface GenOptions {
-  env: string
-  output?: string
+export interface RunAiGenerateArgs {
+  /** 小程序项目根（绝对路径，已校验存在 project.config.json + app.json）。 */
+  projectPath: string
+  /** 已解析的小程序源码根（含 app.json 的目录，绝对路径）。 */
+  miniprogramRoot: string
+  /**
+   * agent 工作目录（绝对路径）。语义由调用方根据是否传入 name 决定：
+   *   - 给了 name → `<mp>/skills/<name>/`，agent 直接在此写 Skill 文件，不再建子目录
+   *   - 没给 name → `<mp>/skills/`，agent 自决子目录名
+   */
+  outputPath: string
+  /** 可选 skill 名。仅作 system prompt / initial message 的 hint；outputPath 须由调用方根据是否传入 name 预先计算。 */
+  name?: string
+  /** 可选 CloudBase 环境 ID，存在时透传到子进程的 `CLOUDBASE_ENV_ID`。 */
+  env?: string
+  /** 可选业务场景描述，附加到 system prompt 的 `# 业务场景` 段。 */
   scenario?: string
+  /** 可选 LLM 提供方预设（deepseek / glm / kimi / minimax 等），用于预填 baseUrl 与默认 model。 */
   provider?: string
+  /** 可选模型名，覆盖 provider 预设与 OPENAI_MODEL；最终模型由 ensureLlmCredentials 解析。 */
   model?: string
+  /** 可选本轮诉求；存在时直接作为 initial message 的任务文本，否则回落到默认探索 / 生成话术。 */
   query?: string
+  /** 是否走 opencode `run` 一次性模式；不传则进入交互式 TUI（用户可 Ctrl+C 退出）。 */
   nonInteractive?: boolean
 }
 
-export async function genCommand(projectDir: string, opts: GenOptions): Promise<void> {
-  await trackCommand({ command: 'gen' })
+export async function runAiGenerate(args: RunAiGenerateArgs): Promise<void> {
+  const { projectPath, miniprogramRoot, outputPath, name, env, scenario, provider, model, query, nonInteractive } =
+    args
 
-  const projectPath = resolve(projectDir)
-
-  if (!existsSync(projectPath)) {
-    warn(`项目目录不存在: ${projectPath}`)
-    process.exit(1)
+  // 入参契约：路径必须绝对 + miniprogramRoot 必须含 app.json。
+  // 这些条件由调用方（create.ts）保证；这里做最后一道防线，配置错误时立即失败而非生成假产物。
+  if (!isAbsolute(projectPath)) {
+    throw new Error(`projectPath 必须是绝对路径：${projectPath}`)
+  }
+  if (!isAbsolute(miniprogramRoot)) {
+    throw new Error(`miniprogramRoot 必须是绝对路径：${miniprogramRoot}`)
+  }
+  if (!isAbsolute(outputPath)) {
+    throw new Error(`outputPath 必须是绝对路径：${outputPath}`)
+  }
+  if (!existsSync(join(miniprogramRoot, 'app.json'))) {
+    throw new Error(`miniprogramRoot 不含 app.json：${miniprogramRoot}`)
   }
 
-  // 兼容两种布局：app.json 在 miniprogram/ 子目录，或直接在项目根，
-  // 以及通过 project.config.json 的 miniprogramRoot 指定的目录。
-  const miniprogramRoot = resolveMiniprogramRoot(projectPath)
-  if (!miniprogramRoot) {
-    warn('当前目录不是小程序项目（未找到 app.json）')
-    log('请提供包含 app.json 的小程序项目路径（支持源码在根目录或 miniprogram/ 子目录）')
-    process.exit(1)
-  }
-
-  // --output 默认使用小程序的 miniprogram root，产物直接写入项目源码目录
-  const outputPath = resolve(opts.output ?? miniprogramRoot)
-
-  // 若指定了 --provider，将对应预设的 baseUrl / defaultModel 注入 process.env；
-  // --model 显式参数优先级更高，最后覆盖。
-  applyProviderPreset({ provider: opts.provider, model: opts.model })
+  // 若指定了 provider，将对应预设的 baseUrl / defaultModel 注入 process.env；
+  // model 显式参数优先级更高，最后覆盖。
+  applyProviderPreset({ provider, model })
 
   // 统一凭据解析：先读环境变量/.env，缺失且交互式时弹出向导并持久化
   const creds = await ensureLlmCredentials({
-    modelOverride: opts.model,
+    modelOverride: model,
     defaultModel: 'gpt-4o',
   })
 
-  // 解析 opencode 可执行文件
   const opencodeBin = resolveOpencodeBin()
   if (!opencodeBin) {
     warn('未找到 opencode 命令')
@@ -76,12 +85,11 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     process.exit(1)
   }
 
-  // 确保两个官方 skill 就位（按需下载到 ~/.mp-skills/skills），并注册给 opencode
   const genSkillDir = await ensureSkill({
     skillName: GENERATE_SKILL_NAME,
     verifySubpath: 'SKILL.md',
     extraSearchBases: [process.cwd(), projectPath],
-    spinnerEnabled: !opts.nonInteractive,
+    spinnerEnabled: !nonInteractive,
   })
   if (!genSkillDir) {
     warn(`无法获取 ${GENERATE_SKILL_NAME}`)
@@ -94,7 +102,7 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     skillName: VALIDATE_SKILL_NAME,
     verifySubpath: 'SKILL.md',
     extraSearchBases: [process.cwd(), projectPath],
-    spinnerEnabled: !opts.nonInteractive,
+    spinnerEnabled: !nonInteractive,
   })
   if (!validateSkillDir) {
     warn(`无法获取 ${VALIDATE_SKILL_NAME}`)
@@ -103,28 +111,24 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     process.exit(1)
   }
 
-  // 准备输出目录（agent 的工作目录）
   mkdirSync(outputPath, { recursive: true })
 
-  // 仅采集「事实」：输出目录里已存在哪些 Skill 产物。
-  // 不在 JS 里硬判定「生成 / 修改」——把事实 + 用户 -q 诉求一起交给 agent，
-  // 由它结合上下文自行判断本轮是「全新生成」「在已有产物上修改」还是「新增一个 Skill」。
-  const existingSkills = listExistingSkills(outputPath)
+  // 仅采集事实：outputPath 下已存在哪些 Skill 产物。
+  // 仅当未指定 name（即 outputPath = <mp>/skills/）时扫描子目录；指定 name 时 outputPath 本身即 skill 目录。
+  const existingSkills = name ? [] : listExistingSkills(outputPath)
 
   const systemPrompt = buildSystemPrompt({
     projectPath,
     miniprogramRoot,
     outputPath,
-    scenario: opts.scenario,
+    scenario,
+    name,
     generateSkillName: GENERATE_SKILL_NAME,
     validateSkillName: VALIDATE_SKILL_NAME,
-    existingSkills,
   })
 
-  // 初始任务消息：陈述事实（已有产物、用户诉求），让 agent 自行判定意图后推进。
-  const initialMessage = buildInitialMessage({ query: opts.query, existingSkills })
+  const initialMessage = buildInitialMessage({ query, name, existingSkills })
 
-  // 注入：BYOK provider + skills.paths（发现两个官方 skill）+ 主 agent system prompt
   const configContent = buildOpencodeConfig(creds, {
     skillPaths: [globalSkillsRoot()],
     systemPrompt,
@@ -134,24 +138,24 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
     ...process.env,
     OPENCODE_CONFIG_CONTENT: configContent,
   }
-  // 仅在显式提供 --env 时透传（BYOK 下非必需）
-  if (opts.env) {
-    childEnv.CLOUDBASE_ENV_ID = opts.env
+  if (env) {
+    childEnv.CLOUDBASE_ENV_ID = env
   }
 
   title(existingSkills.length > 0 ? '🤖 启动 Skill agent（输出目录已有产物）...' : '🤖 启动 Skill 生成 agent...')
   kv('项目源码', projectPath)
   kv('输出目录', outputPath)
+  if (name) kv('Skill 名', name)
   if (existingSkills.length > 0) kv('已有 Skill', existingSkills.join(', '))
-  if (opts.query) kv('本轮诉求', opts.query)
-  if (opts.env) kv('TCB 环境', opts.env)
-  if (opts.provider) kv('Provider', opts.provider)
+  if (query) kv('本轮诉求', query)
+  if (env) kv('TCB 环境', env)
+  if (provider) kv('Provider', provider)
   kv('模型', creds.model)
   kv('端点', creds.baseUrl)
-  kv('模式', opts.nonInteractive ? 'non-interactive（一次性）' : 'interactive（多轮，Ctrl+C 退出）')
+  kv('模式', nonInteractive ? 'non-interactive（一次性）' : 'interactive（多轮，Ctrl+C 退出）')
   log('')
 
-  if (opts.nonInteractive) {
+  if (nonInteractive) {
     await runNonInteractive(opencodeBin, outputPath, creds, childEnv, initialMessage)
     return
   }
@@ -159,10 +163,6 @@ export async function genCommand(projectDir: string, opts: GenOptions): Promise<
   await runInteractive(opencodeBin, outputPath, creds, childEnv, initialMessage)
 }
 
-/**
- * 交互式模式：进入 opencode TUI，预置初始任务消息。
- * agent 在 TUI 内自主多轮推进，用户可继续追问或随时 Ctrl+C 退出。
- */
 async function runInteractive(
   bin: string,
   outputPath: string,
@@ -171,7 +171,7 @@ async function runInteractive(
   initialMessage: string,
 ): Promise<void> {
   const args = [
-    outputPath, // TUI 工作目录（positional [project]）
+    outputPath,
     '--model',
     opencodeModelArg(creds),
     '--prompt',
@@ -179,7 +179,6 @@ async function runInteractive(
   ]
 
   const exitCode = await runOpencodeInteractive(bin, args, env)
-  // TUI 退出（含用户 Ctrl+C）属正常结束，不当作失败
   log('')
   title('已退出生成会话')
   kv('输出目录', outputPath)
@@ -189,10 +188,6 @@ async function runInteractive(
   }
 }
 
-/**
- * 非交互模式：run 一次性跑完，捕获 NDJSON 事件流打印精简进度。
- * 适合脚本 / CI。
- */
 async function runNonInteractive(
   bin: string,
   outputPath: string,
@@ -223,8 +218,6 @@ async function runNonInteractive(
   kv('输出目录', outputPath)
 }
 
-// 列出输出目录下已存在的 Skill 子目录（含 SKILL.md 的视为一个 Skill 产物）。
-// 仅作为「事实」交给 agent，由 agent 自行判定本轮是生成还是修改。
 function listExistingSkills(outputPath: string): string[] {
   if (!existsSync(outputPath)) return []
   try {
@@ -236,42 +229,36 @@ function listExistingSkills(outputPath: string): string[] {
   }
 }
 
-// 构建进入会话时的初始任务消息。
-// 简单规则：
-//   - 有 -q：直接用用户的诉求作为本轮目标（具体怎么做交给 system prompt 的工作流）。
-//   - 无 -q：默认探索当前小程序项目，根据已有代码生成 Skill。
-// 输出目录现状（已有哪些产物）作为事实附在末尾，供 agent 判断是生成还是修改。
-function buildInitialMessage(args: { query?: string; existingSkills: string[] }): string {
-  const { query, existingSkills } = args
+function buildInitialMessage(args: { query?: string; name?: string; existingSkills: string[] }): string {
+  const { query, name, existingSkills } = args
 
   const stateLine =
     existingSkills.length > 0
       ? `\n\n（输出目录已存在 Skill 产物：${existingSkills.map((s) => `\`${s}\``).join('、')}）`
       : ''
 
-  const task = query
-    ? query
-    : '请探索当前小程序项目，根据其已有代码生成符合规范的 Skill，并用 wxa-skills-validate 校验通过。'
+  let task: string
+  if (query) {
+    task = query
+  } else if (name) {
+    task = `请探索当前小程序项目，根据其已有代码生成名为 \`${name}\` 的 Skill，并用 wxa-skills-validate 校验通过。`
+  } else {
+    task = '请探索当前小程序项目，根据其已有代码生成符合规范的 Skill，并用 wxa-skills-validate 校验通过。'
+  }
 
   return `${task}${stateLine}`
 }
 
-/**
- * 构建注入给主 agent（build）的 system prompt。
- * 只规定「目标 / 边界 / 可用能力」，不规定固定步骤——让模型借助
- * wxa-skills-generate / wxa-skills-validate 两个 skill 自主决定工作流。
- */
 function buildSystemPrompt(args: {
   projectPath: string
   miniprogramRoot: string
   outputPath: string
   scenario?: string
+  name?: string
   generateSkillName: string
   validateSkillName: string
-  existingSkills: string[]
 }): string {
-  const { projectPath, miniprogramRoot, outputPath, scenario, generateSkillName, validateSkillName, existingSkills } =
-    args
+  const { projectPath, miniprogramRoot, outputPath, scenario, name, generateSkillName, validateSkillName } = args
 
   const scenarioSection = scenario
     ? `
@@ -279,6 +266,16 @@ function buildSystemPrompt(args: {
 ${scenario}
 `
     : ''
+
+  // 工作目录语义：给了 name 时 outputPath 本身即 skill 目录；否则 agent 自建子目录。
+  const workspaceLines = name
+    ? `- 工作目录即 Skill 目录（绝对路径）：\`${outputPath}\`
+- **直接在工作目录下写入 Skill 文件**（mcp.json / SKILL.md / index.js / apis/ / components/ 等），**不要**再建子目录。
+- 写文件用相对工作目录的相对路径（如 \`SKILL.md\`、\`apis/searchItems.js\`）。
+- 当前目标 Skill 名称：\`${name}\`。`
+    : `- 工作目录即输出目录：\`${outputPath}\`
+- 在工作目录下创建 \`<skill-name>/\` 子目录，写入 mcp.json / SKILL.md / index.js / apis/ / components/ 等。
+- 写文件用相对工作目录的相对路径（如 \`drink-skill/SKILL.md\`）。`
 
   return `你是微信小程序 Coding Agent，分析已有小程序项目，依据 \`${generateSkillName}\` 的规范，产出对应的小程序 Skill 分包、开发新 Skill 和 维护已有 Skill。在 Skill 更新完成前**必须**经过 \`${validateSkillName}\` 校验；校验失败则按报错修复并重新校验，直到通过为止。
 
@@ -293,9 +290,7 @@ ${scenario}
 - 小程序源码根（含 app.json，绝对路径）：\`${miniprogramRoot}\`
   - 入口配置：\`${miniprogramRoot}/app.json\`
   - 页面目录：\`${miniprogramRoot}/pages/\`
-- 工作目录即输出目录：\`${outputPath}\`
-- 在工作目录下创建 \`<skill-name>/\` 子目录，写入 mcp.json / SKILL.md / index.js / apis/ / components/ 等。
-- 写文件用相对工作目录的相对路径（如 \`drink-skill/SKILL.md\`）。
+${workspaceLines}
 </workspace-info>
 
 ${scenarioSection}

@@ -43,7 +43,7 @@ const EVAL_CLI_SUBPATHS = [
   `miniprogram/skills/${EVAL_SKILL_NAME}/cli/index.js`,
 ]
 
-export async function evalCommand(projectDir: string, opts: EvalOptions): Promise<void> {
+export async function evalCommand(projectDir: string = '.', opts: EvalOptions): Promise<void> {
   await trackCommand({ command: 'eval' })
 
   const projectPath = resolve(projectDir)
@@ -437,4 +437,3 @@ function syncCredsToEvalEnv(evalSkillDir: string, creds: LlmCredentials): void {
     WXA_SKILL_EVAL_LLM_MODEL: creds.model,
   })
 }
-

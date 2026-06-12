@@ -86,13 +86,31 @@ program
 // ── create — 创建新 Skill ────────────────────────────
 program
   .command('create [name]')
-  .description('在当前项目中创建新的 Skill 骨架')
-  .action(
-    track('create', async (name) => {
+  .description('在当前项目中创建新的 Skill 骨架（默认走模板；--ai 进入大模型辅助生成）')
+  .option('--ai', '使用大模型辅助生成 Skill（默认走模板）')
+  .option('-s, --scenario <desc>', '[--ai] 业务场景描述（如：商品检索、订单管理）')
+  .option('-q, --query <text>', '[--ai] 本轮诉求；在已有产物上迭代时尤其有用')
+  .option('-p, --provider <name>', '[--ai] LLM 提供方预设（deepseek / glm / kimi / minimax）')
+  .option('-m, --model <name>', '[--ai] 模型名')
+  .option('-e, --env <envId>', '[--ai] CloudBase 环境 ID')
+  .option('-n, --non-interactive', '[--ai] 非交互模式：一次性跑完，适合脚本 / CI', false)
+  .action(async (name, opts) => {
+    const cmdName = opts.ai ? 'create:ai' : 'create'
+    const start = Date.now()
+    try {
       const { createCommand } = await import('./commands/create.js')
-      await createCommand(name)
-    }),
-  )
+      await createCommand(name, opts)
+      trackCommand({ command: cmdName, success: true, duration: Date.now() - start }).catch(() => {})
+    } catch (err) {
+      trackCommand({
+        command: cmdName,
+        success: false,
+        error: (err as Error).message,
+        duration: Date.now() - start,
+      }).catch(() => {})
+      throw err
+    }
+  })
 
 // ── new — 创建新项目 ─────────────────────────────────
 program
@@ -189,25 +207,9 @@ program
     }),
   )
 
-// ── gen — 根据已有项目生成 Skill ──────────────────────
-program
-  .command('gen <project-dir>')
-  .description('分析已有小程序，启动 agent 多轮生成符合规范的 Skill（默认交互式，Ctrl+C 退出）')
-  .option('-e, --env <envId>', 'CloudBase 环境 ID', '')
-  .option('-o, --output <dir>', '生成的 Skill 文件输出目录（默认使用小程序的 miniprogram root）')
-  .option('-s, --scenario <desc>', '业务场景描述（如：商品检索、订单管理）')
-  .option('-m, --model <name>', '模型名（默认取 OPENAI_MODEL，回退 gpt-4o）')
-  .option('-p, --provider <name>', 'LLM 提供方预设（deepseek / glm / kimi / minimax），预填 baseUrl 与默认 model')
-  .option('-q, --query <text>', '本轮诉求；在已有产物上迭代时尤其有用（如：xxx 接口有 bug）')
-  .option('-n, --non-interactive', '非交互模式：一次性跑完，适合脚本 / CI', false)
-  .action(async (projectDir, opts) => {
-    const { genCommand } = await import('./commands/gen.js')
-    await genCommand(projectDir, opts)
-  })
-
 // ── eval — 对 Skills 项目启动端到端评估 ──────────────────
 program
-  .command('eval <project-dir>')
+  .command('eval [project-dir]')
   .description('对已有 Skills 项目启动端到端质量评估（需先安装 wxa-skills-eval）')
   .option('-e, --env <envId>', 'CloudBase 环境 ID（BYOK 模式下可省略，仅透传给下游）', '')
   .option('-c, --cases <n>', '生成的测试用例数', '1')
@@ -223,7 +225,7 @@ program
   .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与 OPENAI_BASE_URL 环境变量')
   .action(async (projectDir, opts) => {
     const { evalCommand } = await import('./commands/eval.js')
-    await evalCommand(projectDir, opts)
+    await evalCommand(projectDir || '.', opts)
   })
 
 // Parse args
