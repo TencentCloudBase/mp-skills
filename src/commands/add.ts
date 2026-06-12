@@ -153,22 +153,22 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // 未指定 → 交互选择
     if (process.stdin.isTTY && skills.length > 1) {
-      // 尝试从注册表获取描述
-      const registryUrl = 'https://raw.githubusercontent.com/TencentCloudBase/mp-skills/main/src/registry.json'
+      // 从 clone 的本地文件读取描述（mcp.json）
       let descMap = new Map<string, string>()
-      try {
-        const res = await fetch(registryUrl, {
-          headers: { 'User-Agent': 'mp-skills-cli', Accept: 'application/vnd.github.v3.raw' },
-        })
-        if (res.ok) {
-          const reg = await res.json()
-          for (const repo of reg.repositories || []) {
-            for (const s of repo.skills || []) {
-              descMap.set(s.name, s.description)
+      if (tmpDir) {
+        for (const s of skills) {
+          try {
+            const mcpPath = join(tmpDir, 'skills', s.name, 'mcp.json')
+            if (existsSync(mcpPath)) {
+              const mcp = JSON.parse(readFileSync(mcpPath, 'utf-8'))
+              const apis = mcp.apis || []
+              if (apis.length > 0 && apis[0].description) {
+                descMap.set(s.name, apis[0].description.split('\n')[0].slice(0, 80))
+              }
             }
-          }
+          } catch {}
         }
-      } catch {}
+      }
 
       const selectItems: SelectItem[] = skills.map((s) => ({
         value: s.name,
