@@ -12,12 +12,7 @@ import { trackCommand } from '../lib/telemetry.js'
 import { ensureLlmCredentials, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
 import { PRESETS } from '../lib/credential-setup.js'
-import {
-  resolveOpencodeBin,
-  buildOpencodeConfig,
-  opencodeModelArg,
-  runOpencode,
-} from '../lib/opencode.js'
+import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencode } from '../lib/opencode.js'
 
 interface EvalOptions {
   env: string

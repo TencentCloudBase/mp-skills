@@ -190,11 +190,7 @@ async function promptModelSelect(
 ): Promise<CloudbaseModel> {
   const lines = renderBorderlessTable(
     [colors.bold('模型'), colors.bold('提供商'), colors.bold('状态')],
-    models.map((model) => [
-      model.model,
-      model.group,
-      model.enabled ? colors.green('已开启') : colors.yellow('未开启'),
-    ]),
+    models.map((model) => [model.model, model.group, model.enabled ? colors.green('已开启') : colors.yellow('未开启')]),
   )
 
   const [header = '', ...rows] = lines
@@ -217,9 +213,7 @@ interface ProviderChoice {
  * 交互式选出一套 LLM 凭据。
  * 仅应在 TTY 环境下调用（调用方负责判断 process.stdin.isTTY）。
  */
-export async function interactiveSetup(opts?: {
-  defaultModel?: string
-}): Promise<LlmCredentials> {
+export async function interactiveSetup(opts?: { defaultModel?: string }): Promise<LlmCredentials> {
   const choices: ProviderChoice[] = [
     { key: 'cloudbase', label: 'CloudBase（云开发 AI 网关，自动获取密钥）' },
     ...PRESETS.map((p) => ({ key: p.key, label: p.label })),
@@ -318,10 +312,7 @@ async function setupCloudbase(opts?: { defaultModel?: string }): Promise<LlmCred
 }
 
 /** 选已有 API Key（取明文）或新建一个 */
-async function resolveCloudbaseApiKey(
-  cred: CloudbaseCredential,
-  envId: string,
-): Promise<string> {
+async function resolveCloudbaseApiKey(cred: CloudbaseCredential, envId: string): Promise<string> {
   const keys = listApiKeys(envId)
 
   type KeyChoice = { kind: 'existing'; keyId: string; name: string } | { kind: 'new' }

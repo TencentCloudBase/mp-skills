@@ -42,10 +42,7 @@ export function resolveOpencodeBin(): string | null {
  *     （目录约定：每个 skill 一个子目录，子目录内含 SKILL.md，opencode 从 paths 列表
  *     的每个目录扫描 *\/SKILL.md。绝对路径与 ~ 都支持）
  */
-export function buildOpencodeConfig(
-  creds: LlmCredentials,
-  opts?: { skillPaths?: string[] },
-): string {
+export function buildOpencodeConfig(creds: LlmCredentials, opts?: { skillPaths?: string[] }): string {
   const config: Record<string, any> = {
     provider: {
       [OC_PROVIDER]: {
@@ -76,11 +73,7 @@ export function opencodeModelArg(creds: LlmCredentials): string {
  * 启动 opencode 子进程，逐行解析 NDJSON 事件流并打印精简进度。
  * 返回退出码。
  */
-export function runOpencode(
-  bin: string,
-  args: string[],
-  env: NodeJS.ProcessEnv,
-): Promise<number> {
+export function runOpencode(bin: string, args: string[], env: NodeJS.ProcessEnv): Promise<number> {
   return new Promise((resolvePromise) => {
     const child = spawn(bin, args, {
       env,
@@ -187,10 +180,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000
  * @param rawUrl     GitHub raw URL（缓存键 + 远端兜底）
  * @param localAbsCandidates 本地已安装的绝对候选路径
  */
-export async function fetchSkillMd(
-  rawUrl: string,
-  localAbsCandidates: string[],
-): Promise<string | null> {
+export async function fetchSkillMd(rawUrl: string, localAbsCandidates: string[]): Promise<string | null> {
   // 1. 本地已安装
   for (const abs of localAbsCandidates) {
     if (existsSync(abs)) {

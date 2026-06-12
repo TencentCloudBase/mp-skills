@@ -137,9 +137,7 @@ export function listEnvs(): CloudbaseEnv[] {
   const json = runCloudbaseJson(['env', 'list', '--json'])
   const data = json?.data
   if (!Array.isArray(data)) return []
-  return data
-    .filter((e: any) => e?.envId)
-    .map((e: any) => ({ envId: e.envId, alias: e.alias || e.Alias }))
+  return data.filter((e: any) => e?.envId).map((e: any) => ({ envId: e.envId, alias: e.alias || e.Alias }))
 }
 
 export interface CloudbaseApiKey {
@@ -164,17 +162,7 @@ export function listApiKeys(envId: string): CloudbaseApiKey[] {
  * 失败返回 null。
  */
 export function createApiKey(envId: string, name: string): string | null {
-  const json = runCloudbaseJson([
-    'env',
-    'apikey',
-    'create',
-    name,
-    '-e',
-    envId,
-    '--type',
-    'publish_key',
-    '--json',
-  ])
+  const json = runCloudbaseJson(['env', 'apikey', 'create', name, '-e', envId, '--type', 'publish_key', '--json'])
   const apiKey = json?.data?.ApiKey || json?.ApiKey
   return typeof apiKey === 'string' && apiKey ? apiKey : null
 }
@@ -195,10 +183,7 @@ export interface CloudbaseModel {
  * 来源 DescribeAIModels（区别于 DescribeManagedAIModelList 的全量目录）——
  * 其返回的各分组 Models[] 即该环境已开通的模型。
  */
-async function fetchEnabledModelSet(
-  cred: CloudbaseCredential,
-  envId: string,
-): Promise<Set<string>> {
+async function fetchEnabledModelSet(cred: CloudbaseCredential, envId: string): Promise<Set<string>> {
   const res = await makeApp(cred, envId)
     .commonService('tcb', '2018-06-08')
     .call({ Action: 'DescribeAIModels', Param: { EnvId: envId } })
@@ -219,10 +204,7 @@ async function fetchEnabledModelSet(
 /**
  * 拉取某环境的全量模型目录，并标注每个模型是否已开启。
  */
-export async function listModels(
-  cred: CloudbaseCredential,
-  envId: string,
-): Promise<CloudbaseModel[]> {
+export async function listModels(cred: CloudbaseCredential, envId: string): Promise<CloudbaseModel[]> {
   const enabledSet = await fetchEnabledModelSet(cred, envId)
   const res = await makeApp(cred, envId)
     .commonService('tcb', '2018-06-08')

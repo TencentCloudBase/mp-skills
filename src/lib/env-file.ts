@@ -22,10 +22,7 @@ function parseLine(line: string): [string, string] | null {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return null
 
   let value = withoutExport.slice(eq + 1).trim()
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
     value = value.slice(1, -1)
   }
   return [key, value]
