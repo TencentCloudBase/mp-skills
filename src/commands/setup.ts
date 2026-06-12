@@ -311,7 +311,14 @@ function readEnvIdFromProject(projectPath: string): string | null {
   for (const p of paths) {
     try {
       const json = JSON.parse(readFileSync(p, 'utf-8'))
-      if (json.envId) return json.envId
+      if (json.envId) {
+        // 解析 {{env.XXX}} 插值
+        const resolved = String(json.envId).replace(/\{\{env\.(\w+)\}\}/g, (_, name) => process.env[name] || `{{env.${name}}}`)
+        if (resolved !== json.envId && resolved.includes('{{env.')) {
+          console.warn('  ⚠️  环境变量 ENV_ID 未设置，保留插值。可通过 --env-id 参数指定')
+        }
+        return resolved
+      }
     } catch {}
   }
   return null
