@@ -28,7 +28,7 @@ Component({
       })
     },
 
-    onAction(e: WechatMiniprogram.TouchEvent) {
+    onAction(e) {
       const { action } = e.currentTarget.dataset
       this.triggerEvent('action', { action })
     },
