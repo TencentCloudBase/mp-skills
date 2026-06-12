@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 import CloudBase from '@cloudbase/manager-node'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
-import { writeProjectCloudbaserc } from '../lib/cloudbase-config.js'
+import { writeProjectCloudbaserc, writeSharedConfig } from '../lib/cloudbase-config.js'
 import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
 import { scanCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
@@ -29,25 +29,41 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   console.log('mp-skills setup')
   console.log('')
 
+  // ── 第 0 步：选择云开发环境 ──
+  let targetEnvId = opts.envId || readEnvIdFromProject(projectPath)
+  if (!targetEnvId || targetEnvId.includes('{{env.')) {
+    targetEnvId = await interactiveEnvSelect(projectPath)
+  }
+  if (!targetEnvId) {
+    console.log('  ❌ 未选择云开发环境')
+    console.log('     可通过 --env-id 参数指定，或设置 ENV_ID 环境变量')
+    console.log('')
+    return
+  }
+
+  // 写入共享配置 config.js（中间件读取）和 cloudbaserc.json
+  writeSharedConfig(projectPath, targetEnvId)
+  console.log('')
+
   if (runAll || opts.cloudFunctions) {
     const steps = runAll ? '1/3' : '1/1'
-    await setupCloudFunctions(projectPath, opts.dryRun || false, steps)
+    await setupCloudFunctions(projectPath, targetEnvId, opts.dryRun || false, steps)
   }
 
   if (runAll || opts.database) {
     const steps = runAll ? '2/3' : '1/1'
-    await setupDatabase(projectPath, opts.dryRun || false, opts.envId, steps)
+    await setupDatabase(projectPath, targetEnvId, opts.dryRun || false, steps)
   }
 
   if (runAll || opts.services) {
     const steps = runAll ? '3/3' : '1/1'
-    await setupServices(projectPath, steps)
+    await setupServices(projectPath, targetEnvId, steps)
   }
 
   console.log('')
 }
 
-async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: string): Promise<void> {
+async function setupCloudFunctions(projectPath: string, envId: string, dryRun: boolean, step: string): Promise<void> {
   console.log(`[${step}] 云函数`)
   console.log('─'.repeat(40))
 
@@ -110,7 +126,7 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
     }
   }
 
-  const mergedPath = writeProjectCloudbaserc(projectPath)
+  const mergedPath = writeProjectCloudbaserc(projectPath, false, envId)
   if (mergedPath) {
     console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
   } else if (toAggregate.length > 0) {
@@ -155,7 +171,7 @@ async function setupCloudFunctions(projectPath: string, dryRun: boolean, step: s
   console.log('')
 }
 
-async function setupDatabase(projectPath: string, dryRun: boolean, envId: string | undefined, step: string): Promise<void> {
+async function setupDatabase(projectPath: string, envId: string, dryRun: boolean, step: string): Promise<void> {
   console.log(`[${step}] 数据库`)
   console.log('─'.repeat(40))
 
@@ -174,20 +190,6 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
 
   if (dryRun) {
     console.log(`  [dry-run] 将创建 ${all.length} 个集合`)
-    console.log('')
-    return
-  }
-
-  // ── 获取环境 ID ──
-  let targetEnvId = envId || readEnvIdFromProject(projectPath)
-
-  // 未解析到有效 envId 时，交互式选择环境
-  if (!targetEnvId || targetEnvId.includes('{{env.')) {
-    targetEnvId = await interactiveEnvSelect(projectPath)
-  }
-  if (!targetEnvId) {
-    console.log('  ❌ 未选择云开发环境')
-    console.log('     可通过 --env-id 参数指定，或设置 ENV_ID 环境变量')
     console.log('')
     return
   }
@@ -230,7 +232,7 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
     secretId: cred.tmpSecretId,
     secretKey: cred.tmpSecretKey,
     token: cred.tmpToken,
-    envId: targetEnvId,
+    envId: envId,
     region: 'ap-shanghai',
   })
 
@@ -305,7 +307,7 @@ async function setupDatabase(projectPath: string, dryRun: boolean, envId: string
   console.log('')
 }
 
-async function setupServices(projectPath: string, step: string): Promise<void> {
+async function setupServices(projectPath: string, _envId: string, step: string): Promise<void> {
   console.log(`[${step}] 服务`)
   console.log('─'.repeat(40))
 

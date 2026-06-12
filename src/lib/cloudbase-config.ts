@@ -139,18 +139,18 @@ function resolveEnvVars(value: string): string {
  * 将合并后的项目级 cloudbaserc.json 写入到项目根目录。
  * 自动解析 {{env.XXX}} 插值为实际环境变量值，
  * 确保 tcb CLI 和直接 MCP 调用都能获得正确的环境 ID。
+ *
+ * @param envIdOverride 已解析的环境 ID（如已由 setup 交互选择），
+ *                      提供时跳过 {{env.ENV_ID}} 插值
  */
-export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = false): string | null {
+export function writeProjectCloudbaserc(projectPath: string, dryRun: boolean = false, envIdOverride?: string): string | null {
   const merged = mergeSkillCloudbaserc(projectPath)
 
   if (merged.functions.length === 0 && !merged.database) {
     return null
   }
 
-  // 解析 envId 中的 {{env.ENV_ID}} 插值
-  if (merged.envId) {
-    merged.envId = resolveEnvVars(merged.envId)
-  }
+  merged.envId = envIdOverride || (merged.envId ? resolveEnvVars(merged.envId) : undefined)
 
   const destPath = join(projectPath, 'cloudbaserc.json')
   const content = JSON.stringify(merged, null, 2) + '\n'
