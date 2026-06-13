@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
 import { ENV } from './lib/llm-credentials.js'
 import { showLogo, getLogoLines } from './lib/logo.js'
-import { ensureSkill, findSkillDir, GLOBAL_SKILLS_DIR } from './lib/skill-installer.js'
+import { findSkillDir, GLOBAL_SKILLS_DIR } from './lib/skill-installer.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -58,19 +58,6 @@ const skillPathLines = TOOL_SKILLS.map((s) => {
   return `  ${s.name}: ${path}  ${s.desc}`
 })
 program.addHelpText('afterAll', '\n工具型 Skill 路径（供 AI 模型引用）:\n' + skillPathLines.join('\n'))
-
-// ── 启动时确保工具型 Skill 就位并打印路径 ──
-let _skillsEnsured = false
-program.hook('preAction', async () => {
-  if (_skillsEnsured) return
-  _skillsEnsured = true
-  for (const s of TOOL_SKILLS) {
-    const dir = await ensureSkill({ skillName: s.name, verifySubpath: s.verify, spinnerEnabled: false })
-    if (dir) {
-      console.log(`  ${s.name}: ${dir}`)
-    }
-  }
-})
 
 // ── add — 安装 Skill ─────────────────────────────────
 program
