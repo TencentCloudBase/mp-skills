@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
 import { ENV } from './lib/llm-credentials.js'
 import { showLogo, getLogoLines } from './lib/logo.js'
-import { ensureSkill } from './lib/skill-installer.js'
+import { ensureSkill, findSkillDir, GLOBAL_SKILLS_DIR } from './lib/skill-installer.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -41,15 +41,24 @@ function track(name: string, fn: (...args: any[]) => Promise<void>) {
 
 program.name('mp-skills').description('微信小程序 AI Skills 管理工具').version(version)
 
-// Logo 在 help 顶部也显示
-program.addHelpText('beforeAll', getLogoLines().join('\n'))
-
-// ── 启动时确保工具型 Skill 就位并打印路径 ──
+// ── 工具型 Skill 定义 ──
 const TOOL_SKILLS = [
   { name: 'wxa-skills-generate', verify: 'SKILL.md' },
   { name: 'wxa-skills-validate', verify: 'scripts/validate.mjs' },
   { name: 'wxa-skills-eval', verify: 'cli/index.js' },
 ]
+
+// Logo 在 help 顶部也显示
+program.addHelpText('beforeAll', getLogoLines().join('\n'))
+
+// help 底部显示工具型 Skill 路径
+const skillPathLines = TOOL_SKILLS.map((s) => {
+  const dir = findSkillDir(s.name, s.verify, [])
+  return `  ${s.name}: ${dir || GLOBAL_SKILLS_DIR + '/' + s.name + ' (未安装)'}`
+})
+program.addHelpText('afterAll', '\n' + skillPathLines.join('\n'))
+
+// ── 启动时确保工具型 Skill 就位并打印路径 ──
 let _skillsEnsured = false
 program.hook('preAction', async () => {
   if (_skillsEnsured) return

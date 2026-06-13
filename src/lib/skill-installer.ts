@@ -65,7 +65,7 @@ export async function ensureSkill(opts: EnsureSkillOptions): Promise<string | nu
 }
 
 /** 在全局目录及额外基准目录中查找 skill 安装目录 */
-function findSkillDir(skillName: string, verifySubpath: string, extraBases: string[]): string | null {
+export function findSkillDir(skillName: string, verifySubpath: string, extraBases: string[]): string | null {
   const candidates: string[] = [join(GLOBAL_SKILLS_DIR, skillName)]
   for (const base of extraBases) {
     // 兼容 base 直接是 mpRoot 的旧调用
