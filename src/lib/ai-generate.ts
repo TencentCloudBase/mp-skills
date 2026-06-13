@@ -46,10 +46,12 @@ export interface RunAiGenerateArgs {
   query?: string
   /** 是否走 opencode `run` 一次性模式；不传则进入交互式 TUI（用户可 Ctrl+C 退出）。 */
   nonInteractive?: boolean
+  /** 强制重新提取内置工具 Skill（升级 mp-skills 后用于刷新 ~/.mp-skills/skills/）。 */
+  reinstallTools?: boolean
 }
 
 export async function runAiGenerate(args: RunAiGenerateArgs): Promise<void> {
-  const { projectPath, miniprogramRoot, outputPath, name, env, scenario, provider, model, query, nonInteractive } = args
+  const { projectPath, miniprogramRoot, outputPath, name, env, scenario, provider, model, query, nonInteractive, reinstallTools } = args
 
   // 入参契约：路径必须绝对 + miniprogramRoot 必须含 app.json。
   // 这些条件由调用方（create.ts）保证；这里做最后一道防线，配置错误时立即失败而非生成假产物。
@@ -89,6 +91,7 @@ export async function runAiGenerate(args: RunAiGenerateArgs): Promise<void> {
     verifySubpath: 'SKILL.md',
     extraSearchBases: [process.cwd(), projectPath],
     spinnerEnabled: !nonInteractive,
+    forceReinstall: reinstallTools,
   })
   if (!genSkillDir) {
     warn(`无法获取 ${GENERATE_SKILL_NAME}`)
@@ -102,6 +105,7 @@ export async function runAiGenerate(args: RunAiGenerateArgs): Promise<void> {
     verifySubpath: 'SKILL.md',
     extraSearchBases: [process.cwd(), projectPath],
     spinnerEnabled: !nonInteractive,
+    forceReinstall: reinstallTools,
   })
   if (!validateSkillDir) {
     warn(`无法获取 ${VALIDATE_SKILL_NAME}`)

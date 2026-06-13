@@ -33,6 +33,8 @@ export interface EnsureSkillOptions {
   extraSearchBases?: string[]
   /** 是否启用 spinner 动画（默认 true） */
   spinnerEnabled?: boolean
+  /** 强制重新提取：删除全局目录后重新从内联数据 / git clone 安装 */
+  forceReinstall?: boolean
 }
 
 /**
@@ -48,6 +50,15 @@ export async function ensureSkill(opts: EnsureSkillOptions): Promise<string | nu
   const enabled = opts.spinnerEnabled ?? true
 
   const sp = spinner(`查找 ${skillName}...`, { enabled })
+
+  // 强制重装：先删全局目录，让后续流程重新提取
+  if (opts.forceReinstall) {
+    const globalDir = join(GLOBAL_SKILLS_DIR, skillName)
+    if (existsSync(globalDir)) {
+      rmSync(globalDir, { recursive: true, force: true })
+    }
+    sp.update(`重新安装 ${skillName}...`)
+  }
 
   const found = findSkillDir(skillName, verifySubpath, opts.extraSearchBases ?? [])
   if (found) {

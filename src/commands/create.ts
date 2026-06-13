@@ -25,6 +25,8 @@ export interface CreateOptions {
   env?: string
   /** [agent] 一次性跑完（CI 兜底） */
   nonInteractive?: boolean
+  /** 强制重新提取内置工具 Skill */
+  reinstallTools?: boolean
 }
 
 const AGENT_ONLY_FLAGS: Array<{ key: keyof CreateOptions; label: string }> = [
@@ -151,6 +153,7 @@ async function callAiMode(
     model: opts.model,
     query: opts.query,
     nonInteractive: opts.nonInteractive,
+    reinstallTools: opts.reinstallTools,
   }
 
   // 测试桩：写入参数到文件后直接返回，不真调 LLM

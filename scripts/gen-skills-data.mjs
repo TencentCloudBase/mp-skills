@@ -78,7 +78,39 @@ if (!cloneOk) {
   process.exit(0) // 正常退出，不阻塞 build
 }
 
-// ── 步骤 2：读取所有 skill 文件 ──
+// ── Patches：对特定 skill 文件做兼容性修复 ──
+// DeepSeek / Kimi 等模型不支持 OpenAI 的 json_schema 结构化输出模式，
+// 将 response_format 降级为 json_object，并依赖 client-side JSON parse fallback。
+// find 用精确字符串，不匹配则跳过（上游更新后自动失效，不打坏构建）。
+const PATCHES = [
+  {
+    file: 'wxa-skills-eval/cli/index.js',
+    find: 'responseFormat:{type:"json_schema",json_schema:r}',
+    replace: 'responseFormat:{type:"json_object"}',
+    description: 'wxa-skills-eval/cli: chatObject json_schema → json_object',
+  },
+  {
+    file: 'wxa-skills-eval/core/index.js',
+    find: 'responseFormat:{type:"json_schema",json_schema:r}',
+    replace: 'responseFormat:{type:"json_object"}',
+    description: 'wxa-skills-eval/core: chatObject json_schema → json_object',
+  },
+]
+
+function applyPatches(skillData) {
+  for (const patch of PATCHES) {
+    if (!(patch.file in skillData)) continue
+    const content = skillData[patch.file]
+    if (!content.includes(patch.find)) {
+      console.log(`  ~ patch skipped (pattern not found, upstream may have fixed it): ${patch.description}`)
+      continue
+    }
+    skillData[patch.file] = content.replace(patch.find, patch.replace)
+    console.log(`  ~ patched: ${patch.description}`)
+  }
+}
+
+
 const skillData = {}
 
 for (const skillName of SKILL_NAMES) {
@@ -105,5 +137,8 @@ try {
   execSync(`rm -rf "${tempDir}"`, { stdio: 'ignore' })
 } catch {}
 
-// ── 步骤 4：生成 TypeScript 数据文件 ──
+// ── 步骤 4：应用兼容性 patch ──
+applyPatches(skillData)
+
+// ── 步骤 5：生成 TypeScript 数据文件 ──
 writeOutput(skillData)

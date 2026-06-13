@@ -10,7 +10,12 @@ import { colors, kv, log, ok, spinner, title, warn, resolveMiniprogramRoot } fro
 import { trackCommand } from '../lib/telemetry.js'
 import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
-import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencode } from '../lib/opencode.js'
+import {
+  resolveOpencodeBin,
+  buildOpencodeConfig,
+  opencodeModelArg,
+  runOpencodeInteractive,
+} from '../lib/opencode.js'
 import { ensureSkill } from '../lib/skill-installer.js'
 
 interface EvalOptions {
@@ -23,6 +28,7 @@ interface EvalOptions {
   model?: string
   openaiApiKey?: string
   openaiBaseUrl?: string
+  reinstallTools?: boolean
 }
 
 const EVAL_SKILL_NAME = 'wxa-skills-eval'
@@ -53,6 +59,7 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
     verifySubpath: join('cli', 'index.js'),
     extraSearchBases: [process.cwd(), projectPath],
     spinnerEnabled: false, // 我们自己在外面控制 spinner
+    forceReinstall: opts.reinstallTools,
   })
   if (!skillDir) {
     evalSpinner.error(`自动获取 ${EVAL_SKILL_NAME} 失败`)
@@ -88,6 +95,8 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
     WXA_SKILL_EVAL_LLM_BASE_URL: creds.baseUrl,
     WXA_SKILL_EVAL_LLM_API_KEY: creds.apiKey,
     WXA_SKILL_EVAL_LLM_MODEL: creds.model,
+    // 若模型只支持 temperature=1（如 Kimi/Moonshot），通过 LLM_EXTRA_BODY 覆盖
+    ...(requiresTemperatureOne(creds.baseUrl, creds.model) ? { LLM_EXTRA_BODY: '{"temperature":1}' } : {}),
   }
   // 仅在显式提供 --env 时透传（BYOK 下非必需）
   if (opts.env) {
@@ -186,7 +195,7 @@ async function runAgentMode(ctx: {
     headless: opts.headless,
   })
 
-  title('* 启动 agent 驱动评估...')
+  title('🤖 启动 agent 驱动评估（交互式，Ctrl+C 退出）...')
   kv('项目路径', projectPath)
   kv('评估 CLI', evalCliPath)
   kv('skill 目录', skillsRoot)
@@ -203,29 +212,20 @@ async function runAgentMode(ctx: {
     OPENCODE_CONFIG_CONTENT: buildOpencodeConfig(creds, { skillPaths: [skillsRoot], systemPrompt }),
   }
 
-  // --dir 设为评测工具所在目录，便于 opencode 用相对路径调用官方 CLI；
-  // 评测目标项目通过绝对路径传入，opencode 可读取 --dir 之外的绝对路径。
+  // 交互式 TUI：工作目录设为评测工具目录，预置初始任务消息
   const args = [
-    'run',
-    prompt,
+    evalSkillDir,
     '--model',
     opencodeModelArg(creds),
-    '--dir',
-    evalSkillDir,
-    '--format',
-    'json',
-    '--dangerously-skip-permissions',
-    '--print-logs',
+    '--prompt',
+    prompt,
   ]
 
-  const exitCode = await runOpencode(opencodeBin, args, childEnv)
-  if (exitCode !== 0) {
-    warn(`agent 执行失败（退出码 ${exitCode}）`)
-    process.exit(exitCode || 1)
-  }
-
-  title('[OK] 评估流程结束')
-  log(colors.dim('  详见上方 agent 输出与 data/runs/ 报告'))
+  const exitCode = await runOpencodeInteractive(opencodeBin, args, childEnv)
+  log('')
+  title('已退出评估会话')
+  log(colors.dim('  详见 data/runs/ 报告'))
+  if (exitCode !== 0) log(colors.dim(`  （opencode 退出码 ${exitCode}）`))
 }
 
 /**
@@ -295,6 +295,16 @@ ${runModeLine}
 ${cmd}
 \`\`\`
 `
+}
+
+/**
+ * 检测模型是否只允许 temperature=1（如 Kimi/Moonshot 的推理模型）。
+ * 通过 LLM_EXTRA_BODY 注入 {"temperature":1} 来覆盖 wxa-skills-eval 的硬编码值。
+ */
+function requiresTemperatureOne(baseUrl: string, model: string): boolean {
+  const url = baseUrl.toLowerCase()
+  const m = model.toLowerCase()
+  return url.includes('moonshot') || m.includes('kimi') || m.includes('moonshot')
 }
 
 /**

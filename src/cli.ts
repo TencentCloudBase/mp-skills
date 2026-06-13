@@ -122,6 +122,7 @@ program
   .option('-m, --model <name>', '[agent] 模型名')
   .option('-e, --env <envId>', '[agent] CloudBase 环境 ID')
   .option('--non-interactive', '[agent] 非交互模式：一次性跑完，适合脚本 / CI', false)
+  .option('--reinstall-tools', '强制重新提取内置工具 Skill（升级 mp-skills 后用于刷新 ~/.mp-skills/skills/）', false)
   .action(async (name, opts) => {
     showLogo()
     const mode = opts.mode === 'agent' ? 'agent' : 'template'
@@ -254,6 +255,7 @@ program
   .option('-m, --model <name>', `模型名，覆盖 --provider 预设与 ${ENV.MODEL} 环境变量`)
   .option('--openai-api-key <key>', 'OpenAI 兼容 API Key，覆盖对应环境变量')
   .option('--openai-base-url <url>', 'OpenAI 兼容 Base URL，覆盖 --provider 预设与对应环境变量')
+  .option('--reinstall-tools', '强制重新提取内置工具 Skill（升级 mp-skills 后用于刷新 ~/.mp-skills/skills/）', false)
   .action(async (opts) => {
     showLogo()
     const { evalCommand } = await import('./commands/eval.js')
