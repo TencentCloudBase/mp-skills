@@ -47,11 +47,12 @@ jobs:
           git push
           git push --tags
 
+      # Trusted Publishers: OIDC handles auth, no NPM_TOKEN needed
+      # Config: npmjs.com → package → Settings → Publishing access → Trusted Publisher
+      # Add: GitHub repo = TencentCloudBase/mp-skills, workflow = .github/workflows/publish.yml
       - name: Publish to npm
         id: publish
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
 
       - name: Create GitHub Release
         if: steps.publish.outcome == 'success'
