@@ -2,11 +2,11 @@
 // 统一的 registry 加载逻辑，供 find/add 共享。
 //
 // 加载顺序：
-//   1. GitHub raw（远程最新）
-//   2. cnb.cool raw（国内加速）
-//   3. 本地文件（npm 包内兜底）
+//   1. GitHub raw（远程最新，从 awesome-miniprogram-skills 仓库获取）
+//   2. 本地文件（npm 包内兜底）
 //
-// 从哪个源加载成功，后续就使用该源的 mirrorUrl。
+// cnb.cool 镜像体现在 add 的 cloneRepo 使用 mirrorUrl，
+// 以及 gen-skills-data.mjs 的克隆环节。
 
 import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -46,7 +46,7 @@ function loadLocal(): Registry | null {
 /**
  * 加载注册表。
  * 返回 { registry, source }
- * source: 'github' | 'cnb' | 'local'
+ * source: 'github' | 'local'
  */
 export async function loadRegistry(): Promise<{ registry: Registry; source: string }> {
   const local = loadLocal()
@@ -54,7 +54,7 @@ export async function loadRegistry(): Promise<{ registry: Registry; source: stri
   const repoName = repo?.repo
   const ref = repo?.ref || 'main'
 
-  // ── 1. 尝试从 GitHub raw 加载 ──
+  // ── 1. 尝试从 GitHub raw 加载（awesome-miniprogram-skills 仓库中的远程 registry）
   if (repoName) {
     const githubUrl = `https://raw.githubusercontent.com/${repoName}/${ref}/registry.json`
     try {
@@ -70,22 +70,7 @@ export async function loadRegistry(): Promise<{ registry: Registry; source: stri
     }
   }
 
-  // ── 2. 尝试从 cnb.cool raw 加载 ──
-  if (local?.registryUrl) {
-    try {
-      const res = await fetch(local.registryUrl, { signal: AbortSignal.timeout(5000) })
-      if (res.ok) {
-        const remote: Registry = await res.json()
-        if (remote.repositories?.length) {
-          return { registry: remote, source: 'cnb' }
-        }
-      }
-    } catch {
-      // fall through
-    }
-  }
-
-  // ── 3. 本地兜底 ──
+  // ── 2. 本地兜底 ──
   if (local) {
     return { registry: local, source: 'local' }
   }
