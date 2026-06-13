@@ -79,6 +79,7 @@ function parseSkillTree(tree: Array<{ path: string }>, pattern: string): Array<{
     const match = item.path.match(regex)
     if (match) {
       const name = match[1]!
+      if (name.startsWith('_')) continue // 过滤 _shared 等内部目录
       const dir = dirname(item.path)
       skills.set(name, dir)
     }
@@ -119,6 +120,7 @@ function scanLocalSkills(repoDir: string, pathPattern: string): Array<{ name: st
   function walk(dir: string, relativeDir: string): void {
     let found = false
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('_')) continue // 过滤 _shared 等内部目录
       if (entry.isDirectory()) {
         walk(join(dir, entry.name), relativeDir ? `${relativeDir}/${entry.name}` : entry.name)
       } else if (entry.name === marker) {
@@ -133,6 +135,7 @@ function scanLocalSkills(repoDir: string, pathPattern: string): Array<{ name: st
 
   if (existsSync(searchDir)) {
     for (const entry of readdirSync(searchDir, { withFileTypes: true })) {
+      if (entry.name.startsWith('_')) continue // 过滤 _shared 等内部目录
       if (entry.isDirectory()) {
         walk(join(searchDir, entry.name), entry.name)
       }
