@@ -12,7 +12,7 @@ import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
-import { loadRegistry, lookupRepoConfig, getCloneUrl, getCloneRef, getRawUrl } from '../lib/registry.js'
+import { loadRegistry, lookupRepoConfig, getCloneUrl, getRawUrl } from '../lib/registry.js'
 
 interface AddOptions {
   skill?: string
@@ -113,7 +113,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         return
       }
       // 需要 clone 来获取实际文件
-      tmpDir = cloneRepo(cloneUrl, getCloneRef(mirrorCfg.ref || sourceInfo.ref, regSource))
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       skillLocalPath = join(tmpDir, match.path)
       installSkill(skillLocalPath, projectPath, {
         skillName: opts.skill,
@@ -128,7 +128,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // --all
     if (opts.all) {
-      tmpDir = cloneRepo(cloneUrl, getCloneRef(mirrorCfg.ref || sourceInfo.ref, regSource))
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       let count = 0
       for (const s of skills) {
         const sp = join(tmpDir, s.path)
@@ -190,7 +190,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       // 处理多选结果
       const selectedNames = selected.split(',')
 
-      tmpDir = cloneRepo(cloneUrl, getCloneRef(mirrorCfg.ref || sourceInfo.ref, regSource))
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       for (const name of selectedNames) {
         const skillPath = pathMap.get(name) || `skills/${name}`
         skillLocalPath = join(tmpDir, skillPath)
