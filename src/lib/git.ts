@@ -250,11 +250,10 @@ export function cloneRepo(repoUrl: string, ref: string = 'main', mirrorUrl?: str
     try {
       execSync(`git clone --depth 1 --branch "${safeRef}" "${safeUrl}" "${tmpDir}"`, {
         stdio: 'ignore',
-        timeout: 30_000,
+        timeout: 120_000,
       })
       return tmpDir
     } catch {
-      // 清理失败临时目录，尝试下一个 URL
       try {
         execSync(`rm -rf "${tmpDir}"`, { stdio: 'ignore' })
       } catch {}

@@ -97,7 +97,11 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     // 远程获取
     if (!opts.yes) log(`从 ${sourceInfo.repoName || sourceInfo.repoUrl} 获取...`)
 
-    const skills = await listRemoteSkills(sourceInfo, mirrorCfg.pathPattern, mirrorCfg.mirrorUrl)
+    const skills = await listRemoteSkills(
+      { ...sourceInfo, ref: mirrorCfg.ref || sourceInfo.ref },
+      mirrorCfg.pathPattern,
+      mirrorCfg.mirrorUrl,
+    )
 
     if (skills.length === 0) {
       warn('未找到 Skill')
