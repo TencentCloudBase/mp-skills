@@ -25,9 +25,9 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     const sourceInfo = parseSource(source)
 
     // 加载注册表，确定数据来源（GitHub / cnb.cool）
-    const { registry, source } = await loadRegistry()
+    const { registry, source: regSource } = await loadRegistry()
     const mirrorCfg = lookupRepoConfig(registry, sourceInfo.repoName || '')
-    const cloneUrl = getCloneUrl(sourceInfo.repoName || '', source, sourceInfo.repoUrl, mirrorCfg.mirrorUrl)
+    const cloneUrl = getCloneUrl(sourceInfo.repoName || '', regSource, sourceInfo.repoUrl, mirrorCfg.mirrorUrl)
 
     // ── 检测项目 ──
     const projectPath = resolve('.')
