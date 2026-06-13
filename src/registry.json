@@ -7,8 +7,6 @@
       "name": "awesome-miniprogram",
       "repo": "TencentCloudBase/awesome-miniprogram-skills",
       "ref": "feat/skill-market",
-      "pathPattern": "skills/<name>/mcp.json",
-      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills.git",
       "skills": [
         { "name": "drink-skill", "description": "咖啡点单：推荐饮品、搜索、选规格、填地址、下单支付" },
         { "name": "order-skill", "description": "外卖点餐：搜索餐厅、浏览菜单、下单、查看配送状态" },
@@ -22,18 +20,6 @@
         { "name": "todolist-skill", "description": "简单待办：查看待办、添加、标记完成" },
         { "name": "water-tracker", "description": "喝水记录：记录每日饮水量、查看饮水历史" },
         { "name": "payment-skill", "description": "微信支付：创建支付订单、调起支付、查询支付状态" }
-      ]
-    },
-    {
-      "name": "ai-mode-official",
-      "repo": "wechat-miniprogram/ai-mode-skills",
-      "ref": "master",
-      "pathPattern": "<name>/SKILL.md",
-      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/ai-mode-demo.git",
-      "skills": [
-        { "name": "wxa-skills-validate", "description": "校验和修复小程序 AI SKILLs 产物" },
-        { "name": "wxa-skills-generate", "description": "AI 辅助 Skill 生成工作流与规范" },
-        { "name": "wxa-skills-eval", "description": "端到端质量评估" }
       ]
     }
   ]
