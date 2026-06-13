@@ -21,33 +21,47 @@
 
 ---
 
-## 三层架构
 
-mp-skills 生态由三层组成，避免混淆：
+---
 
-```
-┌──────────────────────────────────────────────────────┐
-│  ① 工具 Skill（AI 引导层）                            │
-│  wxa-find-skills / wxa-create-ai-miniprogram /        │
-│  wxa-create-mp-skill                                  │
-│  供 AI coding 工具读取，引导完成开发任务               │
-├──────────────────────────────────────────────────────┤
-│  ② CLI 工具（执行层）                                  │
-│  mp-skills add / setup / validate / eval              │
-│  开发者直接使用的命令行工具                            │
-├──────────────────────────────────────────────────────┤
-│  ③ 业务 Skill（能力层）                                │
-│  queue-skill / order-skill / payment-skill             │
-│  安装到小程序中的具体 AI 能力                          │
-└──────────────────────────────────────────────────────┘
-```
+## 理解 mp-skills 的三层结构
 
-- **工具 Skill**（`skills/` 目录）：AI 原生的引导文档，供 AI coding 工具读取执行。不安装到小程序中。
-- **CLI 工具**（`npx mp-skills`）：开发者直接用的命令行。
-- **业务 Skill**（[awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills)）：安装到小程序中的具体 AI 能力。
+这个仓库包含**三种不同类型**的东西，容易混淆，先理清楚：
+
+### ③ 业务 Skill — 小程序里的 AI 能力
+
+安装到小程序项目中，为用户提供具体的 AI 功能。
+
+> 例子：queue-skill（排队取号）、order-skill（点餐）、payment-skill（支付）
+>
+> 安装方式：`npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill queue-skill`
+
+业务 Skill 存放在单独的 [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 仓库，本仓库不包含。
+
+### ② CLI 工具 — 你直接用的命令行
+
+管理业务 Skill 的安装、校验、评测和环境搭建。
+
+> 例子：
+> ```
+> npx mp-skills find            # 搜索业务 Skill
+> npx mp-skills add ...         # 安装
+> npx mp-skills setup           # 初始化云开发环境
+> npx mp-skills validate        # 校验业务 Skill 质量
+> ```
+
+### ① 工具 Skill — 给 AI 读的引导文档
+
+本仓库 skills/ 下的三个 SKILL.md 文件，**不安装到小程序中**。AI coding 工具读取后按步骤执行，帮你完成开发任务。
+
+> 例子：
+> - wxa-find-skills → AI 读完后知道怎么搜索安装业务 Skill
+> - wxa-create-ai-miniprogram → AI 读完后知道怎么从零创建项目
+> - wxa-create-mp-skill → AI 读完后知道怎么生成自定义 Skill 代码
+
+运行 npx mp-skills --help 底部会显示这三个工具 Skill 的本地路径。
 
 ## 快速开始
-
 ### 发现并安装 Skill
 
 ```bash
@@ -99,20 +113,6 @@ npx mp-skills setup
 | `render`     | 渲染 Skill 的原子组件                                     | ② |
 | `setup`      | 一站式环境搭建：聚合云函数、创建集合、检查服务             | ② |
 | `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） | ② |
-
----
-
-## 工具 Skill（AI 引导层）
-
-本仓库 `skills/` 目录下的工具 Skill 不安装到小程序中，而是供 AI coding 工具读取执行的引导文档。AI 按 SKILL.md 的指引完成开发任务。
-
-| Skill | 用途 | 适用场景 |
-|-------|------|---------|
-| [`wxa-find-skills`](skills/wxa-find-skills/SKILL.md) | 搜索和安装社区业务 Skill | "给我的小程序加一个排队功能" |
-| [`wxa-create-ai-miniprogram`](skills/wxa-create-ai-miniprogram/SKILL.md) | 从零创建 AI 小程序 | "我想做一个咖啡点单小程序" |
-| [`wxa-create-mp-skill`](skills/wxa-create-mp-skill/SKILL.md) | 在项目中创建自定义 Skill | "帮我做一个预约试驾的 AI 功能" |
-
-AI coding 工具启动时，`mp-skills --help` 会显示这些工具 Skill 的本地路径。
 
 ---
 
