@@ -58,6 +58,12 @@ const DEFAULT_REGISTRY: Registry = {
         { name: 'payment-skill', description: '微信支付：创建支付订单、调起支付、查询支付状态' },
       ],
     },
+    {
+      name: 'ai-mode-demo',
+      repo: 'wechat-miniprogram/ai-mode-demo',
+      ref: 'master',
+      skills: [{ name: 'drink-skill', description: '咖啡点单：推荐饮品、搜索、选规格、填地址、下单支付' }],
+    },
   ],
 }
 
