@@ -1,0 +1,43 @@
+# ── 镜像同步 Workflow ──
+# 定时将上游 GitHub 仓库同步到 cnb.cool 镜像仓库（git push --mirror）。
+# 配置方式：在 GitHub 仓库 Settings → Secrets and variables → Actions 中
+# 添加 CNB_COOL_TOKEN 密钥（cnb.cool 的 Personal Access Token，需仓库写入权限）。
+#
+# 同步目标在 src/registry.json 的 repositories[].mirrorUrl 中配置。
+
+name: Sync Mirrors
+
+on:
+  schedule:
+    # 每天 UTC 2:00 自动同步（北京时间 10:00）
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # 支持手动触发
+    inputs:
+      force:
+        description: '强制重新同步全部镜像'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync:
+    name: Sync to cnb.cool
+    runs-on: ubuntu-latest
+    if: secrets.CNB_COOL_TOKEN != ''
+
+    steps:
+      - name: Checkout mp-skills
+        uses: actions/checkout@v4
+
+      - name: Setup git config
+        run: |
+          git config --global user.name "mp-skills-sync-bot"
+          git config --global user.email "mp-skills-sync-bot@users.noreply.github.com"
+
+      - name: Sync all mirrors
+        env:
+          # 注入 cnb.cool 的 token 到 mirror URL 中
+          CNB_COOL_TOKEN: ${{ secrets.CNB_COOL_TOKEN }}
+        run: |
+          node scripts/sync-mirror.mjs --all ${{ inputs.force && '--force' || '' }}
