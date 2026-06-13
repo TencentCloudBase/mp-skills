@@ -138,3 +138,9 @@ npx mp-skills setup
 
 这会交互式选择云环境、聚合云函数、生成 cloudbaserc.json、初始化数据库。
 之后用微信开发者工具打开项目即可预览。
+
+---
+
+## ClawHub
+
+https://clawhub.ai/binggg/wxa-find-skills

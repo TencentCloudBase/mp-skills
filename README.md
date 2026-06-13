@@ -579,3 +579,9 @@ npx mp-skills add TencentCloudBase/mp-skills --skill wxa-create-mp-skill
 ```
 
 运行 `npx mp-skills --help` 底部也会显示这三个工具 Skill 的本地路径。
+
+也可通过 ClawHub 社区查看：
+
+- https://clawhub.ai/binggg/wxa-find-skills
+- https://clawhub.ai/binggg/wxa-create-ai-miniprogram
+- https://clawhub.ai/binggg/wxa-create-mp-skill

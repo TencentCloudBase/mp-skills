@@ -201,3 +201,9 @@ node <validate-dir>/scripts/render.mjs \
 
 确认 `app.json` 的 `agent.skills[]` 中已包含新 Skill。
 提示用户运行 `npx mp-skills setup` 完成环境配置。
+
+---
+
+## ClawHub
+
+https://clawhub.ai/binggg/wxa-create-mp-skill

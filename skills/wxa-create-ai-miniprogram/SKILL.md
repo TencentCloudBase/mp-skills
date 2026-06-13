@@ -163,3 +163,9 @@ npx mp-skills setup
 问用户是否需要：
 - 再添加更多 Skill（回到 Step 3 或转 `wxa-find-skills`）
 - 在已有 Skill 上添加自定义能力（转 `wxa-create-mp-skill`）
+
+---
+
+## ClawHub
+
+https://clawhub.ai/binggg/wxa-create-ai-miniprogram
