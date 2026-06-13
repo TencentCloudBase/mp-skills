@@ -128,6 +128,14 @@ export function getCloneUrl(repoName: string, source: string, repoUrl?: string, 
 }
 
 /**
+ * 根据 source 获取克隆 ref：cnb 镜像用 main，否则用原始 ref。
+ */
+export function getCloneRef(ref: string | undefined, source: string): string {
+  if (source === 'cnb') return 'main'
+  return ref || 'main'
+}
+
+/**
  * 根据 source 获取 skill 描述的 raw 访问 URL。
  */
 export function getRawUrl(repoName: string, ref: string, filePath: string, source: string, mirrorUrl?: string): string {
