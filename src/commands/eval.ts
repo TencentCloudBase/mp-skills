@@ -1,18 +1,17 @@
 // ── eval 命令 ──
 // 对已有 Skills 项目启动端到端质量评估
-// 依赖 wxa-skills-eval（自动检测，缺失时提示下载）
+// 依赖 wxa-skills-eval（自动检测，从内联数据或 GitHub 下载）
 
-import { existsSync, cpSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { readFile, writeFile } from 'node:fs/promises'
 import { resolve, join, dirname } from 'node:path'
-import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { colors, kv, log, ok, spinner, title, warn, resolveMiniprogramRoot } from '../lib/utils.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
 import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencode } from '../lib/opencode.js'
-import { SKILLS_DATA } from '../lib/skills-data.js'
+import { ensureSkill } from '../lib/skill-installer.js'
 
 interface EvalOptions {
   env: string
@@ -26,23 +25,7 @@ interface EvalOptions {
   openaiBaseUrl?: string
 }
 
-// wxa-skills-eval 在 GitHub 上的位置
-const EVAL_REPO_URL = 'https://github.com/wechat-miniprogram/ai-mode-skills.git'
 const EVAL_SKILL_NAME = 'wxa-skills-eval'
-
-// 评测工具的全局安装目录：~/.mp-skills/skills
-// 它是评测「工具」而非业务 skill，全局安装一次即可复用，不污染 cwd 或被测项目。
-const GLOBAL_SKILLS_DIR = join(homedir(), '.mp-skills', 'skills')
-
-// 本地查找的基准目录（依次尝试）：
-//   1. 全局安装目录 ~/.mp-skills/skills —— 评测工具的默认落地处
-//   2. 命令执行目录 cwd —— 兼容装在 cwd/skills 的旧布局
-//   3. 被测项目 projectPath —— 兼容已安装在项目内的旧布局
-// 相对各基准目录的候选子路径：
-const EVAL_CLI_SUBPATHS = [
-  `skills/${EVAL_SKILL_NAME}/cli/index.js`,
-  `miniprogram/skills/${EVAL_SKILL_NAME}/cli/index.js`,
-]
 
 export async function evalCommand(projectDir: string = '.', opts: EvalOptions): Promise<void> {
   await trackCommand({ command: 'eval' })
@@ -63,24 +46,22 @@ export async function evalCommand(projectDir: string = '.', opts: EvalOptions): 
     process.exit(1)
   }
 
-  // 查找 wxa-skills-eval 工具（先全局目录，再兼容 cwd/项目内旧布局），找不到则下载到全局目录
-  const evalToolSpinner = spinner(`查找 ${EVAL_SKILL_NAME}...`, { enabled: !opts.headless })
-  let evalCliPath = findEvalCli(projectPath)
-  if (!evalCliPath) {
-    evalToolSpinner.update(`下载 ${EVAL_SKILL_NAME} 到 ${GLOBAL_SKILLS_DIR} ...`)
-    const downloaded = await downloadEvalSkill()
-    if (!downloaded) {
-      evalToolSpinner.error(`自动下载 ${EVAL_SKILL_NAME} 失败`)
-      log(`  执行: git clone --depth 1 ${EVAL_REPO_URL}，并把 ${EVAL_SKILL_NAME}/ 放到 ${GLOBAL_SKILLS_DIR}/ 下`)
-      process.exit(1)
-    }
-    evalCliPath = downloaded
+  // 统一走 ensureSkill：查找已有安装 → 从内联数据提取 → git clone 回退（ALL IN ONE）
+  const evalSpinner = spinner(`查找 ${EVAL_SKILL_NAME}...`, { enabled: !opts.headless })
+  const skillDir = await ensureSkill({
+    skillName: EVAL_SKILL_NAME,
+    verifySubpath: join('cli', 'index.js'),
+    extraSearchBases: [process.cwd(), projectPath],
+    spinnerEnabled: false, // 我们自己在外面控制 spinner
+  })
+  if (!skillDir) {
+    evalSpinner.error(`自动获取 ${EVAL_SKILL_NAME} 失败`)
+    process.exit(1)
   }
+  evalSpinner.success(`找到评估工具: ${skillDir}`)
 
-  evalToolSpinner.success(`找到评估工具: ${evalCliPath}`)
-
-  // 评测工具所在目录（.../skills/wxa-skills-eval），由实际入口反推
-  const evalSkillDir = dirname(dirname(evalCliPath))
+  const evalCliPath = join(skillDir, 'cli', 'index.js')
+  const evalSkillDir = skillDir // 即 .../skills/wxa-skills-eval
 
   // 若指定了 --provider，将对应预设的 baseUrl / defaultModel 注入 process.env；
   // --openai-base-url / --openai-api-key / --model 显式参数优先级更高，最后覆盖。
@@ -314,95 +295,6 @@ ${runModeLine}
 ${cmd}
 \`\`\`
 `
-}
-
-/**
- * 查找 wxa-skills-eval 的入口。
- * 基准目录依次为：~/.mp-skills（全局安装处）→ cwd（旧布局）→ projectPath（旧布局）。
- */
-function findEvalCli(projectPath: string): string | null {
-  for (const base of evalSearchBases(projectPath)) {
-    for (const sub of EVAL_CLI_SUBPATHS) {
-      const full = join(base, sub)
-      if (existsSync(full)) return full
-    }
-  }
-  return null
-}
-
-/** 本地查找基准目录（去重）：全局目录在前，cwd 与 projectPath 兜底兼容旧布局 */
-function evalSearchBases(projectPath: string): string[] {
-  const globalBase = dirname(GLOBAL_SKILLS_DIR) // ~/.mp-skills（其下的 skills/ 由 SUBPATHS 拼接）
-  const cwd = process.cwd()
-  const bases = [globalBase, cwd, projectPath]
-  return [...new Set(bases)]
-}
-
-/**
- * 把 wxa-skills-eval 下载到全局目录 ~/.mp-skills/skills 下。
- * 它是评测「工具」而非被测小程序的业务 skill，全局安装一次即可复用，
- * 不污染 cwd 或被测项目，也不走 mp-skills add（避免误注入 app.json）。
- *
- * 下载顺序：
- *   1. 先从内联数据 SKILLS_DATA 中提取（ALL IN ONE，无网络依赖）
- *   2. 内联数据中不存在 → git clone --depth 1 回退
- */
-async function downloadEvalSkill(): Promise<string | null> {
-  const skillsDir = GLOBAL_SKILLS_DIR
-  const targetDir = join(skillsDir, EVAL_SKILL_NAME)
-
-  await mkdir(skillsDir, { recursive: true })
-
-  // 优先从内联数据提取
-  const prefix = EVAL_SKILL_NAME + '/'
-  const hasBundled = Object.keys(SKILLS_DATA).some((k) => k.startsWith(prefix))
-  if (hasBundled) {
-    mkdirSync(targetDir, { recursive: true })
-    for (const [key, content] of Object.entries(SKILLS_DATA)) {
-      if (key.startsWith(prefix)) {
-        const relPath = key.slice(prefix.length)
-        const fullPath = join(targetDir, relPath)
-        mkdirSync(dirname(fullPath), { recursive: true })
-        writeFileSync(fullPath, content, 'utf-8')
-      }
-    }
-    const cliPath = join(targetDir, 'cli', 'index.js')
-    if (existsSync(cliPath)) return cliPath
-    warn('内联数据不完整，回退到 git clone')
-    rmSync(targetDir, { recursive: true, force: true })
-  }
-
-  // 回退：git clone
-  const tempDir = join(skillsDir, `.${EVAL_SKILL_NAME}-tmp`)
-  try {
-    const cloneResult = spawnSync('git', ['clone', '--depth', '1', '--single-branch', EVAL_REPO_URL, tempDir], {
-      stdio: 'pipe',
-    })
-    if (cloneResult.status !== 0) {
-      warn(`git clone 失败: ${cloneResult.stderr?.toString() || 'unknown error'}`)
-      return null
-    }
-
-    const srcDir = join(tempDir, EVAL_SKILL_NAME)
-    if (!existsSync(srcDir)) {
-      warn(`克隆仓库中未找到 ${EVAL_SKILL_NAME} 目录`)
-      return null
-    }
-
-    // 复制到 cwd/skills/wxa-skills-eval/
-    cpSync(srcDir, targetDir, { recursive: true })
-
-    const cliPath = join(targetDir, 'cli', 'index.js')
-    return existsSync(cliPath) ? cliPath : null
-  } catch (err) {
-    warn(`下载失败: ${(err as Error).message}`)
-    return null
-  } finally {
-    // 清理临时目录
-    try {
-      rmSync(tempDir, { recursive: true, force: true })
-    } catch {}
-  }
 }
 
 /**
