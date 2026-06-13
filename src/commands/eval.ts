@@ -2,7 +2,7 @@
 // 对已有 Skills 项目启动端到端质量评估
 // 依赖 wxa-skills-eval（自动检测，缺失时提示下载）
 
-import { existsSync, cpSync, rmSync } from 'node:fs'
+import { existsSync, cpSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { resolve, join, dirname } from 'node:path'
 import { homedir } from 'node:os'
@@ -12,6 +12,7 @@ import { trackCommand } from '../lib/telemetry.js'
 import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
 import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencode } from '../lib/opencode.js'
+import { SKILLS_DATA } from '../lib/skills-data.js'
 
 interface EvalOptions {
   env: string
@@ -341,7 +342,10 @@ function evalSearchBases(projectPath: string): string[] {
  * 把 wxa-skills-eval 下载到全局目录 ~/.mp-skills/skills 下。
  * 它是评测「工具」而非被测小程序的业务 skill，全局安装一次即可复用，
  * 不污染 cwd 或被测项目，也不走 mp-skills add（避免误注入 app.json）。
- * 使用 git clone --depth 1 克隆后提取子目录。
+ *
+ * 下载顺序：
+ *   1. 先从内联数据 SKILLS_DATA 中提取（ALL IN ONE，无网络依赖）
+ *   2. 内联数据中不存在 → git clone --depth 1 回退
  */
 async function downloadEvalSkill(): Promise<string | null> {
   const skillsDir = GLOBAL_SKILLS_DIR
@@ -349,6 +353,26 @@ async function downloadEvalSkill(): Promise<string | null> {
 
   await mkdir(skillsDir, { recursive: true })
 
+  // 优先从内联数据提取
+  const prefix = EVAL_SKILL_NAME + '/'
+  const hasBundled = Object.keys(SKILLS_DATA).some((k) => k.startsWith(prefix))
+  if (hasBundled) {
+    mkdirSync(targetDir, { recursive: true })
+    for (const [key, content] of Object.entries(SKILLS_DATA)) {
+      if (key.startsWith(prefix)) {
+        const relPath = key.slice(prefix.length)
+        const fullPath = join(targetDir, relPath)
+        mkdirSync(dirname(fullPath), { recursive: true })
+        writeFileSync(fullPath, content, 'utf-8')
+      }
+    }
+    const cliPath = join(targetDir, 'cli', 'index.js')
+    if (existsSync(cliPath)) return cliPath
+    warn('内联数据不完整，回退到 git clone')
+    rmSync(targetDir, { recursive: true, force: true })
+  }
+
+  // 回退：git clone
   const tempDir = join(skillsDir, `.${EVAL_SKILL_NAME}-tmp`)
   try {
     const cloneResult = spawnSync('git', ['clone', '--depth', '1', '--single-branch', EVAL_REPO_URL, tempDir], {
