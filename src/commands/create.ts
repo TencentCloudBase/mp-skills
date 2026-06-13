@@ -114,8 +114,11 @@ async function callTemplateMode(name: string | undefined, projectPath: string, m
   ok(`  apis/            — 原子接口实现`)
   ok(`  components/      — 原子组件`)
 
-  // 询问是否注入到 app.json（仅当未提供 name 时交互式确认）
-  if (!name && process.stdin.isTTY) {
+  // 注册到 app.json：显式传 name 时自动注入（跟 add 保持一致），未传时交互式确认
+  if (name) {
+    injectToAppJson(join(mpRoot, 'app.json'), skillName)
+    ok('已自动注册到 app.json agent.skills')
+  } else if (process.stdin.isTTY) {
     const inject = await promptConfirm(`是否将 "${skillName}" 注册到 app.json？`)
     if (inject) {
       injectToAppJson(join(mpRoot, 'app.json'), skillName)
@@ -159,14 +162,10 @@ async function callAiMode(
     await runAiGenerate(args)
   }
 
-  // 模板模式仅在交互式补全 name 后才询问；AI 模式则在用户显式指定 name 时询问，
-  // 原因是 name-less AI 运行可能同时产出多个 Skill，此时无法确定要注册哪个。
-  if (name && process.stdin.isTTY && !opts.nonInteractive) {
-    const inject = await promptConfirm(`是否将 "${name}" 注册到 app.json？`)
-    if (inject) {
-      injectToAppJson(join(mpRoot, 'app.json'), name)
-      ok('已注册到 app.json agent.skills')
-    }
+  // 注册到 app.json：显式传 name 时自动注入，未传时 agent 自决则跳过
+  if (name) {
+    injectToAppJson(join(mpRoot, 'app.json'), name)
+    ok('已自动注册到 app.json agent.skills')
   }
 }
 
