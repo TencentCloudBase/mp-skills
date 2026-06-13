@@ -1,18 +1,39 @@
 # ── 镜像同步 Workflow ──
-# 定时将上游 GitHub 仓库同步到 cnb.cool 镜像仓库（git push --mirror）。
-# 配置方式：在 GitHub 仓库 Settings → Secrets and variables → Actions 中
-# 添加 CNB_COOL_TOKEN 密钥（cnb.cool 的 Personal Access Token，需仓库写入权限）。
+# 事件驱动式将上游 GitHub 仓库同步到 cnb.cool 镜像。
 #
-# 同步目标在 src/registry.json 的 repositories[].mirrorUrl 中配置。
+# 触发方式：
+#   1. repository_dispatch — awesome-miniprogram-skills 仓库 push 后自动通知
+#   2. workflow_dispatch  — 手动触发（Actions 页面）
+#
+# 前提条件：
+#   在 awesome-miniprogram-skills 仓库添加以下 workflow，
+#   并在该仓库 Secrets 中配置 MP_SKILLS_PAT（mp-skills 仓库的 GitHub Token）：
+#
+#   ```yaml
+#   # .github/workflows/notify-mp-skills.yml
+#   name: Notify mp-skills to sync mirror
+#   on: [push]
+#   jobs:
+#     notify:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - run: |
+#             curl -X POST https://api.github.com/repos/TencentCloudBase/mp-skills/dispatches \
+#               -H "Authorization: Bearer \${{ secrets.MP_SKILLS_PAT }}" \
+#               -H "Accept: application/vnd.github+json" \
+#               -d '{"event_type":"sync-mirrors"}'
+#   ```
+#
+# 注意事项：
+#   - wechat-miniprogram/ai-mode-demo（微信仓库）无法自动通知，需手动触发
+#   - 在 mp-skills 仓库 Settings → Secrets 中配置 CNB_COOL_TOKEN
 
 name: Sync Mirrors
 
 on:
-  schedule:
-    # 每天 UTC 2:00 自动同步（北京时间 10:00）
-    - cron: '0 2 * * *'
+  repository_dispatch:
+    types: [sync-mirrors]
   workflow_dispatch:
-    # 支持手动触发
     inputs:
       force:
         description: '强制重新同步全部镜像'
@@ -37,7 +58,6 @@ jobs:
 
       - name: Sync all mirrors
         env:
-          # 注入 cnb.cool 的 token 到 mirror URL 中
           CNB_COOL_TOKEN: ${{ secrets.CNB_COOL_TOKEN }}
         run: |
           node scripts/sync-mirror.mjs --all ${{ inputs.force && '--force' || '' }}
