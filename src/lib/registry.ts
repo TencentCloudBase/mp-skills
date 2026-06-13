@@ -105,13 +105,35 @@ export async function loadRegistry(): Promise<{ registry: Registry; source: stri
 }
 
 /**
- * 从加载好的 registry 中查找指定 repo 的镜像配置。
+ * 从加载好的 registry 中查找指定 repo 的配置。
+ * source 决定优先走 mirror 还是 GitHub。
  */
 export function lookupRepoConfig(
   registry: Registry,
   repoName: string,
+  source: string = 'local',
 ): { mirrorUrl?: string; ref?: string; pathPattern?: string } {
   const entry = registry.repositories.find((r) => r.repo === repoName || r.name === repoName)
   if (!entry) return {}
+  // source 为 cnb 时强制走 mirror，否则返回 mirrorUrl 但由调用方决定是否使用
   return { mirrorUrl: entry.mirrorUrl, ref: entry.ref, pathPattern: entry.pathPattern }
+}
+
+/**
+ * 根据 source 获取克隆 URL：cnb 来源走 mirror，否则走 GitHub。
+ */
+export function getCloneUrl(repoName: string, source: string, repoUrl?: string, mirrorUrl?: string): string {
+  if (source === 'cnb' && mirrorUrl) return mirrorUrl
+  return repoUrl || `https://github.com/${repoName}.git`
+}
+
+/**
+ * 根据 source 获取 skill 描述的 raw 访问 URL。
+ */
+export function getRawUrl(repoName: string, ref: string, filePath: string, source: string, mirrorUrl?: string): string {
+  if (source === 'cnb' && mirrorUrl) {
+    const base = mirrorUrl.replace(/\.git$/, '')
+    return `${base}/-/git/raw/${ref}/${filePath}`
+  }
+  return `https://raw.githubusercontent.com/${repoName}/${ref}/${filePath}`
 }

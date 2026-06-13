@@ -12,7 +12,7 @@ import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
-import { loadRegistry, lookupRepoConfig } from '../lib/registry.js'
+import { loadRegistry, lookupRepoConfig, getCloneUrl } from '../lib/registry.js'
 
 interface AddOptions {
   skill?: string
@@ -24,9 +24,10 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
   try {
     const sourceInfo = parseSource(source)
 
-    // 加载注册表，查镜像配置（国内加速）
-    const { registry } = await loadRegistry()
+    // 加载注册表，确定数据来源（GitHub / cnb.cool）
+    const { registry, source } = await loadRegistry()
     const mirrorCfg = lookupRepoConfig(registry, sourceInfo.repoName || '')
+    const cloneUrl = getCloneUrl(sourceInfo.repoName || '', source, sourceInfo.repoUrl, mirrorCfg.mirrorUrl)
 
     // ── 检测项目 ──
     const projectPath = resolve('.')
@@ -93,15 +94,10 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       return
     }
 
-    // 远程获取（优先走 mirror 加速）
-    if (!opts.yes) {
-      const label = mirrorCfg.mirrorUrl
-        ? `${sourceInfo.repoName || sourceInfo.repoUrl}(镜像加速)`
-        : `${sourceInfo.repoName || sourceInfo.repoUrl}`
-      log(`从 ${label} 获取...`)
-    }
+    // 远程获取
+    if (!opts.yes) log(`从 ${sourceInfo.repoName || sourceInfo.repoUrl} 获取...`)
 
-    const skills = await listRemoteSkills(sourceInfo, mirrorCfg.pathPattern, mirrorCfg.mirrorUrl)
+    const skills = await listRemoteSkills(sourceInfo, mirrorCfg.pathPattern)
 
     if (skills.length === 0) {
       warn('未找到 Skill')
@@ -117,7 +113,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         return
       }
       // 需要 clone 来获取实际文件
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       skillLocalPath = join(tmpDir, match.path)
       installSkill(skillLocalPath, projectPath, {
         skillName: opts.skill,
@@ -132,7 +128,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // --all
     if (opts.all) {
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       let count = 0
       for (const s of skills) {
         const sp = join(tmpDir, s.path)
@@ -187,7 +183,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       // 处理多选结果
       const selectedNames = selected.split(',')
 
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
+      tmpDir = cloneRepo(cloneUrl, mirrorCfg.ref || sourceInfo.ref)
       for (const name of selectedNames) {
         const skillPath = pathMap.get(name) || `skills/${name}`
         skillLocalPath = join(tmpDir, skillPath)

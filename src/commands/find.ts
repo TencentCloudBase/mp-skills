@@ -3,8 +3,7 @@
 // 注册表加载顺序：GitHub raw → cnb.cool raw → 本地文件（npm 包内）
 
 import * as readline from 'readline'
-import { fetchRemoteFile } from '../lib/git.js'
-import { loadRegistry, type Registry } from '../lib/registry.js'
+import { loadRegistry, getRawUrl, type Registry } from '../lib/registry.js'
 import pc from 'picocolors'
 
 // ── ANSI 常量 ──
@@ -57,15 +56,19 @@ async function fetchAllSkills(registry: Registry): Promise<SkillEntry[]> {
   })
 }
 
-/** 并行预取描述（从 GitHub raw 读 mcp.json） */
-async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
+/** 并行预取描述，按 registry 来源走对应 raw URL */
+async function fetchDescriptions(skills: SkillEntry[], registry: Registry, source: string): Promise<void> {
   const fetchOne = async (skill: SkillEntry) => {
     if (skill.description) return
     const mcpPath = `skills/${skill.name}/mcp.json`
-    const sourceInfo = { type: 'github' as const, original: skill.repo, repoName: skill.repo, ref: '' }
-    const content = await fetchRemoteFile(sourceInfo, mcpPath)
-    if (!content) return
+    const repo = registry.repositories.find((r) => r.repo === skill.repo)
+    const ref = repo?.ref || 'main'
+    const url = getRawUrl(skill.repo, ref, mcpPath, source, repo?.mirrorUrl)
+
     try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+      if (!res.ok) return
+      const content = await res.text()
       const mcp = JSON.parse(content)
       let desc = (mcp.description || '').split('\n')[0].trim()
       if (!desc && Array.isArray(mcp.apis) && mcp.apis[0]?.description) {
@@ -88,12 +91,12 @@ function matchSkill(skill: SkillEntry, query: string): boolean {
 
 // ── 非交互模式 ──
 
-async function staticSearch(keyword: string, registry: Registry): Promise<void> {
+async function staticSearch(keyword: string, registry: Registry, source: string): Promise<void> {
   console.log(`搜索 Skill${keyword ? `："${keyword}"` : ''}`)
   console.log('')
 
   const allSkills = await fetchAllSkills(registry)
-  await fetchDescriptions(allSkills)
+  await fetchDescriptions(allSkills, registry, source)
 
   const filtered = allSkills.filter((s) => matchSkill(s, keyword))
   const keywordLower = keyword.toLowerCase()
@@ -129,7 +132,7 @@ async function staticSearch(keyword: string, registry: Registry): Promise<void> 
 
 // ── 交互模式 ──
 
-async function interactiveSearch(registry: Registry): Promise<void> {
+async function interactiveSearch(registry: Registry, source: string): Promise<void> {
   const spinner = createInlineSpinner()
   spinner.start('正在获取 Skill 列表...')
   let allSkills: SkillEntry[] = []
@@ -147,7 +150,7 @@ async function interactiveSearch(registry: Registry): Promise<void> {
   }
 
   spinner.update('正在获取 Skill 描述...')
-  await fetchDescriptions(allSkills)
+  await fetchDescriptions(allSkills, registry, source)
   spinner.stop()
 
   const selected = await runSearchPrompt(allSkills)
@@ -333,7 +336,7 @@ export async function findCommand(keyword: string): Promise<void> {
   }
 
   if (keyword || !process.stdin.isTTY) {
-    return staticSearch(keyword, registry)
+    return staticSearch(keyword, registry, source)
   }
-  return interactiveSearch(registry)
+  return interactiveSearch(registry, source)
 }
