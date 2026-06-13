@@ -53,10 +53,11 @@ program.addHelpText('beforeAll', getLogoLines().join('\n'))
 
 // help 底部显示工具型 Skill 路径
 const skillPathLines = TOOL_SKILLS.map((s) => {
-  const dir = findSkillDir(s.name, s.verify, [])
-  return `  ${s.name}: ${dir || GLOBAL_SKILLS_DIR + '/' + s.name + ' (未安装)'}`
+  const dir = findSkillDir(s.name, 'SKILL.md', [])
+  const path = dir ? dir + '/SKILL.md' : GLOBAL_SKILLS_DIR + '/' + s.name + '/SKILL.md (未安装)'
+  return `  ${s.name}: ${path}`
 })
-program.addHelpText('afterAll', '\n' + skillPathLines.join('\n'))
+program.addHelpText('afterAll', '\n工具型 Skill 路径（供 AI 模型引用）:\n' + skillPathLines.join('\n'))
 
 // ── 启动时确保工具型 Skill 就位并打印路径 ──
 let _skillsEnsured = false
