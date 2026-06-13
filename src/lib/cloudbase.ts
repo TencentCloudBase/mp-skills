@@ -8,26 +8,44 @@
 //
 // 已实测验证的事实见计划文档；这里只做工程化封装。
 
-import { spawnSync } from 'node:child_process'
+import { spawnSync, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { resolve, dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import CloudBase from '@cloudbase/manager-node'
 
 // ── cloudbase CLI 可执行文件 ──
 
-/** 解析 cloudbase 命令：优先全局，回退本包 node_modules/.bin */
-export function resolveCloudbaseBin(): string | null {
-  const probe = spawnSync('which', ['cloudbase'], { encoding: 'utf8' })
-  if (probe.status === 0 && probe.stdout.trim()) {
-    return 'cloudbase'
+/**
+ * 探测 cloudbase/tcb 命令是否已全局可用。
+ * 优先找 `cloudbase`，回退 `tcb`（两者均由 @cloudbase/cli 提供）。
+ * 返回可用的命令名，未找到返回 null。
+ */
+function probeCloudbaseBin(): string | null {
+  for (const cmd of ['cloudbase', 'tcb']) {
+    const probe = spawnSync('which', [cmd], { encoding: 'utf8' })
+    if (probe.status === 0 && probe.stdout.trim()) return cmd
   }
-  // dist/lib/ → dist/ → 包根目录
-  const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-  const local = resolve(pkgRoot, 'node_modules/.bin/cloudbase')
-  if (existsSync(local)) return local
   return null
+}
+
+/**
+ * 解析 cloudbase 命令，未找到时静默自动安装。
+ *   1. 探测全局 cloudbase / tcb
+ *   2. 未找到则静默 npm install -g @cloudbase/cli（pipe 输出，装完打一行提示）
+ *   3. 安装后再次探测；仍失败返回 null
+ */
+export function resolveCloudbaseBin(): string | null {
+  const found = probeCloudbaseBin()
+  if (found) return found
+
+  const install = spawnSync('npm', ['install', '-g', '@cloudbase/cli'], { stdio: 'pipe', encoding: 'utf8' })
+  if (install.status !== 0) {
+    console.log('  [ERR] 安装 @cloudbase/cli 失败，请手动执行：npm install -g @cloudbase/cli')
+    return null
+  }
+
+  return probeCloudbaseBin()
 }
 
 /**
@@ -92,19 +110,40 @@ export function isLoginValid(): boolean {
 }
 
 /**
- * 确保已登录：无效则交互式 `cloudbase login`（继承 stdio）。
- * 返回最终的有效凭据，失败返回 null。
+ * 确保已登录（异步版）：
+ *   1. 先确保 CLI 已安装（未装则静默安装）
+ *   2. 检查登录态，有效则直接返回凭据
+ *   3. 无效则交互式 `cloudbase login`：
+ *      - stderr（CLI 自身 loading 动画）全部吞掉，用调用方的 spinner 代替
+ *      - stdout 只透传扫码 URL 和用户码，其余推广/提示内容全部吞掉
  */
-export function ensureLogin(): CloudbaseCredential | null {
-  if (isLoginValid()) return readAuthCredential()
-
+export async function ensureLogin(): Promise<CloudbaseCredential | null> {
   const bin = resolveCloudbaseBin()
   if (!bin) return null
 
-  const result = spawnSync(bin, ['login'], { stdio: 'inherit' })
-  if (result.status !== null && result.status !== 0) return null
+  if (isLoginValid()) return readAuthCredential()
 
-  return isLoginValid() ? readAuthCredential() : null
+  return new Promise((resolve) => {
+    const child = spawn(bin, ['login'], {
+      stdio: ['inherit', 'pipe', 'pipe'],
+    })
+
+    // 只保留扫码 URL 行和用户码行，其余全部吞掉
+    child.stdout.on('data', (chunk: Buffer) => {
+      for (const line of chunk.toString().split('\n')) {
+        if (/tcb\.cloud\.tencent\.com.*cli-auth/.test(line) || /用户码/.test(line)) {
+          process.stdout.write('\n' + line.trim() + '\n')
+        }
+      }
+    })
+
+    // CLI 自己的 loading spinner 走 stderr，全部吞掉
+    child.stderr.resume()
+
+    child.on('close', (code) => {
+      resolve(code === 0 && isLoginValid() ? readAuthCredential() : null)
+    })
+  })
 }
 
 // ── manager-node OpenAPI 封装 ──

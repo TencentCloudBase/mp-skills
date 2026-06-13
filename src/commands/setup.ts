@@ -3,14 +3,14 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import CloudBase from '@cloudbase/manager-node'
 import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { writeProjectCloudbaserc, writeSharedConfig } from '../lib/cloudbase-config.js'
 import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
 import { scanCollections, generateCollectionGuides } from '../lib/database-scanner.js'
 import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
-import { ensureLogin } from '../lib/cloudbase.js'
+import { ensureLogin, resolveCloudbaseBin } from '../lib/cloudbase.js'
 import { fuzzySelect } from '../lib/selector.js'
 import type { DeployedState } from '../types.js'
 
@@ -195,7 +195,7 @@ async function setupDatabase(projectPath: string, envId: string, dryRun: boolean
   }
 
   // ── 确保登录 ──
-  const cred = ensureLogin()
+  const cred = await ensureLogin()
   if (!cred) {
     console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
     console.log('')
@@ -390,9 +390,15 @@ function readEnvIdFromProject(projectPath: string): string | null {
  */
 async function interactiveEnvSelect(projectPath: string): Promise<string | null> {
   // 确保登录
-  const cred = ensureLogin()
+  const cred = await ensureLogin()
   if (!cred) {
     console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
+    return null
+  }
+
+  const bin = resolveCloudbaseBin()
+  if (!bin) {
+    console.log('  [ERR] 未找到 cloudbase CLI，无法获取环境列表')
     return null
   }
 
@@ -400,7 +406,7 @@ async function interactiveEnvSelect(projectPath: string): Promise<string | null>
 
   let raw: string
   try {
-    raw = execSync('tcb env list --json', { encoding: 'utf-8', timeout: 15000 })
+    raw = spawnSync(bin, ['env', 'list', '--json'], { encoding: 'utf-8', timeout: 15000 }).stdout || ''
   } catch {
     console.log('  [ERR] 获取环境列表失败，请通过 --env-id 参数指定')
     return null

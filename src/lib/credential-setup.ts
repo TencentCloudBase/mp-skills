@@ -13,7 +13,7 @@ import Enquirer from 'enquirer'
 import Table from 'cli-table3'
 import type { LlmCredentials, Preset } from './llm-credentials.js'
 import { PRESETS } from './llm-credentials.js'
-import { colors, log, warn, ok, title, kv } from './utils.js'
+import { colors, log, warn, ok, title, kv, spinner } from './utils.js'
 import {
   ensureLogin,
   listEnvs,
@@ -239,13 +239,15 @@ async function setupCustom(): Promise<LlmCredentials> {
 async function setupCloudbase(opts?: { defaultModel?: string }): Promise<LlmCredentials> {
   log('')
   title('CloudBase 登录')
-  const cred = ensureLogin()
+
+  const loginSpinner = spinner('检查登录状态...')
+  const cred = await ensureLogin()
   if (!cred) {
-    warn('CloudBase 登录失败或未安装 cloudbase CLI')
-    log('请先安装：npm install -g @cloudbase/cli，然后重试')
+    loginSpinner.error('CloudBase 登录失败')
+    warn('请先安装：npm install -g @cloudbase/cli，然后重试')
     process.exit(1)
   }
-  ok('已登录 CloudBase')
+  loginSpinner.success('已登录 CloudBase')
 
   // 选环境
   const envs = listEnvs()
