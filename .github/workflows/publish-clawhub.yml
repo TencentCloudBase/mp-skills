@@ -1,0 +1,77 @@
+name: Publish Skills to ClawHub
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'skills/**'
+      - '.github/workflows/publish-clawhub.yml'
+      - 'scripts/publish-to-clawhub.mjs'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump: patch, minor, or major'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: 'Build and validate only, skip publish'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      BUMP: ${{ github.event_name == 'workflow_dispatch' && inputs.bump || 'patch' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build publish manifest
+        run: node scripts/publish-to-clawhub.mjs --skills-dir skills --output .clawhub-manifest.json
+
+      - name: Install ClawHub CLI
+        if: ${{ env.DRY_RUN != 'true' }}
+        run: npm install -g clawhub@latest
+
+      - name: Login to ClawHub
+        if: ${{ env.DRY_RUN != 'true' }}
+        env:
+          CLAWDHUB_TOKEN: ${{ secrets.CLAWDHUB_TOKEN }}
+        run: clawhub login --token "$CLAWDHUB_TOKEN" --no-browser
+
+      - name: Publish to ClawHub
+        env:
+          CLAWDHUB_TOKEN: ${{ secrets.CLAWDHUB_TOKEN }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "[dry-run] Would publish manifest: .clawhub-manifest.json"
+            cat .clawhub-manifest.json
+          else
+            clawhub publish --manifest .clawhub-manifest.json --bump "$BUMP"
+          fi
+
+      - name: Job summary
+        run: |
+          echo "## ClawHub Publish" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Skills: wxa-find-skills, wxa-create-ai-miniprogram, wxa-create-mp-skill" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Bump: $BUMP" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dry run: $DRY_RUN" >> "$GITHUB_STEP_SUMMARY"
