@@ -1,0 +1,63 @@
+# ── 同步到 cnb.cool 镜像 ──
+# 使用 tencentcom/git-sync 将上游仓库同步到 cnb.cool 镜像。
+#
+# 每次 push 到 mp-skills 主分支时触发，自动推送所有配置的镜像。
+# 依赖：在 Settings → Secrets → Actions 中配置 CNB_TOKEN
+
+name: Sync to CNB
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-awesome:
+    name: awesome-miniprogram-skills
+    runs-on: ubuntu-latest
+    if: secrets.CNB_TOKEN != ''
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          repository: TencentCloudBase/awesome-miniprogram-skills
+          ref: feat/skill-market
+          fetch-depth: 0
+          path: repo
+
+      - name: Sync to CNB
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/repo:${{ github.workspace }}/repo \
+            -w ${{ github.workspace }}/repo \
+            -e PLUGIN_TARGET_URL="https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills.git" \
+            -e PLUGIN_AUTH_TYPE="https" \
+            -e PLUGIN_USERNAME="cnb" \
+            -e PLUGIN_PASSWORD=${{ secrets.CNB_TOKEN }} \
+            -e PLUGIN_FORCE="true" \
+            tencentcom/git-sync
+
+  sync-ai-demo:
+    name: ai-mode-demo
+    runs-on: ubuntu-latest
+    if: secrets.CNB_TOKEN != ''
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          repository: wechat-miniprogram/ai-mode-demo
+          ref: master
+          fetch-depth: 0
+          path: repo
+
+      - name: Sync to CNB
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/repo:${{ github.workspace }}/repo \
+            -w ${{ github.workspace }}/repo \
+            -e PLUGIN_TARGET_URL="https://cnb.cool/tencent/cloud/cloudbase/ai-mode-demo.git" \
+            -e PLUGIN_AUTH_TYPE="https" \
+            -e PLUGIN_USERNAME="cnb" \
+            -e PLUGIN_PASSWORD=${{ secrets.CNB_TOKEN }} \
+            -e PLUGIN_FORCE="true" \
+            tencentcom/git-sync
