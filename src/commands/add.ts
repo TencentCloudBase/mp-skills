@@ -12,43 +12,7 @@ import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
-
-// ── 内联注册表：用于查询 mirrorUrl 等镜像配置，esbuild 打包后路径不可靠 ──
-
-interface RegistryRepo {
-  name: string
-  repo: string
-  ref: string
-  pathPattern?: string
-  mirrorUrl?: string
-}
-
-const REGISTRY_REPOS: RegistryRepo[] = [
-  {
-    name: 'awesome-miniprogram',
-    repo: 'TencentCloudBase/awesome-miniprogram-skills',
-    ref: 'feat/skill-market',
-    mirrorUrl: 'https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills.git',
-  },
-  {
-    name: 'ai-mode-demo',
-    repo: 'wechat-miniprogram/ai-mode-demo',
-    ref: 'master',
-    mirrorUrl: 'https://cnb.cool/tencent/cloud/cloudbase/ai-mode-demo.git',
-  },
-  {
-    name: 'ai-mode-official',
-    repo: 'wechat-miniprogram/ai-mode-skills',
-    ref: 'master',
-    pathPattern: '<name>/SKILL.md',
-  },
-]
-
-/** 根据 repo 名查询 registry 中的镜像配置 */
-function lookupMirror(repoName: string): { mirrorUrl?: string; ref?: string; pathPattern?: string } {
-  const entry = REGISTRY_REPOS.find((r) => r.repo === repoName || r.name === repoName)
-  return entry ? { mirrorUrl: entry.mirrorUrl, ref: entry.ref, pathPattern: entry.pathPattern } : {}
-}
+import { loadRegistry, lookupRepoConfig } from '../lib/registry.js'
 
 interface AddOptions {
   skill?: string
@@ -60,8 +24,9 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
   try {
     const sourceInfo = parseSource(source)
 
-    // 查 registry 获取镜像配置（国内加速），适配不同仓库的路径结构
-    const mirrorCfg = lookupMirror(sourceInfo.repoName || '')
+    // 加载注册表，查镜像配置（国内加速）
+    const { registry } = await loadRegistry()
+    const mirrorCfg = lookupRepoConfig(registry, sourceInfo.repoName || '')
 
     // ── 检测项目 ──
     const projectPath = resolve('.')

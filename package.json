@@ -9,6 +9,7 @@
   "files": [
     "dist/cli.cjs",
     "templates/",
+    "src/registry.json",
     "README.md"
   ],
   "scripts": {

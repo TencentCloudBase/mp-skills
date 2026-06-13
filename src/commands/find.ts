@@ -1,10 +1,10 @@
 // ── find 命令 ──
 // fzf 风格交互式搜索远程业务 Skill（原生 readline，零依赖）
-// 从 cnb.cool 注册表查询 → 内联数据兜底
-// 参考 vercel-labs/skills 的 find.ts 实现
+// 注册表加载顺序：GitHub raw → cnb.cool raw → 本地文件（npm 包内）
 
 import * as readline from 'readline'
 import { fetchRemoteFile } from '../lib/git.js'
+import { loadRegistry, type Registry } from '../lib/registry.js'
 import pc from 'picocolors'
 
 // ── ANSI 常量 ──
@@ -18,72 +18,6 @@ interface SkillEntry {
   name: string
   repo: string
   description: string
-}
-
-interface RegistryRepo {
-  name: string
-  repo: string
-  ref: string
-  pathPattern?: string
-  skills: Array<{ name: string; description: string }>
-}
-
-interface Registry {
-  registryUrl?: string
-  repositories: RegistryRepo[]
-}
-
-// ── 内联注册表（esbuild 打包后路径不可靠，直接内联）──
-
-const DEFAULT_REGISTRY: Registry = {
-  registryUrl: 'https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills/-/raw/main/registry.json',
-  repositories: [
-    {
-      name: 'awesome-miniprogram',
-      repo: 'TencentCloudBase/awesome-miniprogram-skills',
-      ref: 'feat/skill-market',
-      pathPattern: 'skills/<name>/mcp.json',
-      skills: [
-        { name: 'drink-skill', description: '咖啡点单：推荐饮品、搜索、选规格、填地址、下单支付' },
-        { name: 'order-skill', description: '外卖点餐：搜索餐厅、浏览菜单、下单、查看配送状态' },
-        { name: 'hospital-skill', description: '医院挂号：搜索医院科室、查看可挂号时段、预约挂号' },
-        { name: 'taxi-skill', description: '出行打车：预估行程价格、呼叫出租车、查看行程状态' },
-        { name: 'travel-skill', description: '旅行规划：搜索目的地、规划行程、查询天气、获取贴士' },
-        { name: 'shopping-skill', description: '潮玩购物：搜索商品、查看详情、查询门店库存、下单' },
-        { name: 'bill-skill', description: '生活缴费：查询待缴账单、缴费支付、查看缴费历史' },
-        { name: 'party-skill', description: '聚会安排：创建聚会活动、获取场所推荐、邀请好友' },
-        { name: 'queue-skill', description: '排队取号：搜索门店、线上取号、查看排队进度' },
-        { name: 'todolist-skill', description: '简单待办：查看待办、添加、标记完成' },
-        { name: 'water-tracker', description: '喝水记录：记录每日饮水量、查看饮水历史' },
-        { name: 'payment-skill', description: '微信支付：创建支付订单、调起支付、查询支付状态' },
-      ],
-    },
-    {
-      name: 'ai-mode-demo',
-      repo: 'wechat-miniprogram/ai-mode-demo',
-      ref: 'master',
-      skills: [{ name: 'drink-skill', description: '咖啡点单：推荐饮品、搜索、选规格、填地址、下单支付' }],
-    },
-  ],
-}
-
-/** 加载注册表：cnb.cool 远程优先 → 内联兜底 */
-async function loadRegistry(): Promise<{ registry: Registry; fromRemote: boolean }> {
-  const remoteUrl = DEFAULT_REGISTRY.registryUrl
-  if (remoteUrl) {
-    try {
-      const res = await fetch(remoteUrl, { signal: AbortSignal.timeout(5000) })
-      if (res.ok) {
-        const remote: Registry = await res.json()
-        if (remote.repositories?.length) {
-          return { registry: remote, fromRemote: true }
-        }
-      }
-    } catch {
-      // fall through
-    }
-  }
-  return { registry: DEFAULT_REGISTRY, fromRemote: false }
 }
 
 // ── 数据源 ──
@@ -392,10 +326,10 @@ function createInlineSpinner() {
 // ── 入口 ──
 
 export async function findCommand(keyword: string): Promise<void> {
-  const { registry, fromRemote } = await loadRegistry()
+  const { registry, source } = await loadRegistry()
 
-  if (fromRemote) {
-    console.log(`  ${pc.dim('（已加载远程注册表）')}`)
+  if (source !== 'local') {
+    console.log(`  ${pc.dim(`注册表来源：${source}`)}`)
   }
 
   if (keyword || !process.stdin.isTTY) {
