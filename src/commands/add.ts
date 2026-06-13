@@ -48,6 +48,7 @@ const REGISTRY_REPOS: RegistryRepo[] = [
 function lookupMirror(repoName: string): { mirrorUrl?: string; ref?: string; pathPattern?: string } {
   const entry = REGISTRY_REPOS.find((r) => r.repo === repoName || r.name === repoName)
   return entry ? { mirrorUrl: entry.mirrorUrl, ref: entry.ref, pathPattern: entry.pathPattern } : {}
+}
 
 interface AddOptions {
   skill?: string
@@ -127,10 +128,15 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       return
     }
 
-    // 远程获取
-    if (!opts.yes) log(`从 ${sourceInfo.repoName || sourceInfo.repoUrl} 获取...`)
+    // 远程获取（优先走 mirror 加速）
+    if (!opts.yes) {
+      const label = mirrorCfg.mirrorUrl
+        ? `${sourceInfo.repoName || sourceInfo.repoUrl}(镜像加速)`
+        : `${sourceInfo.repoName || sourceInfo.repoUrl}`
+      log(`从 ${label} 获取...`)
+    }
 
-    const skills = await listRemoteSkills(sourceInfo)
+    const skills = await listRemoteSkills(sourceInfo, mirrorCfg.pathPattern, mirrorCfg.mirrorUrl)
 
     if (skills.length === 0) {
       warn('未找到 Skill')
@@ -146,7 +152,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         return
       }
       // 需要 clone 来获取实际文件
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
+      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
       skillLocalPath = join(tmpDir, match.path)
       installSkill(skillLocalPath, projectPath, {
         skillName: opts.skill,
@@ -161,7 +167,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // --all
     if (opts.all) {
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
+      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
       let count = 0
       for (const s of skills) {
         const sp = join(tmpDir, s.path)
@@ -216,7 +222,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       // 处理多选结果
       const selectedNames = selected.split(',')
 
-      tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
+      tmpDir = cloneRepo(sourceInfo.repoUrl!, mirrorCfg.ref || sourceInfo.ref, mirrorCfg.mirrorUrl)
       for (const name of selectedNames) {
         const skillPath = pathMap.get(name) || `skills/${name}`
         skillLocalPath = join(tmpDir, skillPath)
