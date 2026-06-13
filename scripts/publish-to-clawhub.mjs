@@ -80,9 +80,15 @@ console.log(`[INFO] 当前版本: ${currentVersion} → ${newVersion} (${bump})`
 console.log(`[INFO] 发现 ${entries.length} 个 Skill`)
 console.log('')
 
+const DISPLAY_NAMES = {
+  'wxa-find-skills': 'Find MP Skills',
+  'wxa-create-ai-miniprogram': 'Create AI Miniprogram',
+  'wxa-create-mp-skill': 'Create MP Skill',
+}
+
 for (const skill of entries) {
   const slug = skill.name
-  const displayName = skill.name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const displayName = DISPLAY_NAMES[slug] || skill.name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
   console.log(`--- ${skill.name} ---`)
   console.log(`  slug: ${slug}`)
@@ -97,7 +103,7 @@ for (const skill of entries) {
       `--slug "${slug}"`,
       `--name "${displayName}"`,
       `--version "${skill.version}"`,
-      `--owner "TencentCloudBase"`,
+      `--owner "binggg"`,
     ]
 
     if (changelog) {
