@@ -12,7 +12,7 @@ import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
 import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
-import { loadRegistry, lookupRepoConfig, getCloneUrl } from '../lib/registry.js'
+import { loadRegistry, lookupRepoConfig, getCloneUrl, getRawUrl } from '../lib/registry.js'
 
 interface AddOptions {
   skill?: string
@@ -154,22 +154,29 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       const pathMap = new Map<string, string>()
       for (const s of skills) pathMap.set(s.name, s.path)
 
-      // 从 clone 的本地文件读取描述（mcp.json）
+      // 并行拉取描述（从 raw URL，不用等 clone）
       let descMap = new Map<string, string>()
-      if (tmpDir) {
-        for (const s of skills) {
+      await Promise.all(
+        skills.map(async (s) => {
+          const repo = registry.repositories.find((r) => r.repo === sourceInfo.repoName)
+          if (!repo) return
+          const ref = repo.ref || 'main'
+          const mcpPath = `skills/${s.name}/mcp.json`
+          const url = getRawUrl(sourceInfo.repoName || '', ref, mcpPath, regSource, repo.mirrorUrl)
           try {
-            const mcpPath = join(tmpDir, s.path, 'mcp.json')
-            if (existsSync(mcpPath)) {
-              const mcp = JSON.parse(readFileSync(mcpPath, 'utf-8'))
+            const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+            if (res.ok) {
+              const mcp = JSON.parse(await res.text())
               const apis = mcp.apis || []
               if (apis.length > 0 && apis[0].description) {
                 descMap.set(s.name, apis[0].description.split('\n')[0].slice(0, 80))
               }
             }
-          } catch {}
-        }
-      }
+          } catch {
+            // ignore
+          }
+        }),
+      )
 
       const selectItems: SelectItem[] = skills.map((s) => ({
         value: s.name,
