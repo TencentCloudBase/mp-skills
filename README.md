@@ -15,10 +15,36 @@
   <img src="media/term-screenshot.svg" alt="mp-skills terminal screenshot" width="600">
 </p>
 
-让小程序快速接入微信 AI 开发模式——通过安装现成的 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
+让小程序快速接入微信 AI 开发模式——通过安装现成的业务 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
 
-> [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html) — 了解小程序 AI 开发模式的基本概念与接入指南
+> [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html)
+
 ---
+
+## 三层架构
+
+mp-skills 生态由三层组成，避免混淆：
+
+```
+┌──────────────────────────────────────────────────────┐
+│  ① 工具 Skill（AI 引导层）                            │
+│  wxa-find-skills / wxa-create-ai-miniprogram /        │
+│  wxa-create-mp-skill                                  │
+│  供 AI coding 工具读取，引导完成开发任务               │
+├──────────────────────────────────────────────────────┤
+│  ② CLI 工具（执行层）                                  │
+│  mp-skills add / setup / validate / eval              │
+│  开发者直接使用的命令行工具                            │
+├──────────────────────────────────────────────────────┤
+│  ③ 业务 Skill（能力层）                                │
+│  queue-skill / order-skill / payment-skill             │
+│  安装到小程序中的具体 AI 能力                          │
+└──────────────────────────────────────────────────────┘
+```
+
+- **工具 Skill**（`skills/` 目录）：AI 原生的引导文档，供 AI coding 工具读取执行。不安装到小程序中。
+- **CLI 工具**（`npx mp-skills`）：开发者直接用的命令行。
+- **业务 Skill**（[awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills)）：安装到小程序中的具体 AI 能力。
 
 ## 快速开始
 
@@ -59,20 +85,34 @@ npx mp-skills setup
 
 ## 命令
 
-| 命令         | 描述                                                       |
-| ------------ | ---------------------------------------------------------- |
-| `add`        | 从注册表/GitHub/URL/本地路径安装 Skill                     |
-| `find`       | 搜索远程仓库中的可用 Skill                                 |
-| `list`       | 列出已安装的 Skill                                         |
-| `remove`     | 移除已安装的 Skill                                         |
-| `update`     | 检查并更新已安装的 Skill                                   |
-| `create`     | 在已有项目中创建新的 Skill 骨架                            |
-| `new`        | 创建新的小程序项目骨架                                     |
-| `validate`   | 对项目中 Skills 进行静态校验                               |
-| `execute`    | 执行 Skill 的原子接口                                     |
-| `render`     | 渲染 Skill 的原子组件                                     |
-| `setup`      | 一站式环境搭建：聚合云函数、创建集合、检查服务             |
-| `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） |
+| 命令         | 描述                                                       | 层级 |
+| ------------ | ---------------------------------------------------------- | ---- |
+| `add`        | 从注册表/GitHub/URL/本地路径安装 Skill                     | ③ |
+| `find`       | 搜索远程仓库中的可用 Skill                                 | ③ |
+| `list`       | 列出已安装的 Skill                                         | ③ |
+| `remove`     | 移除已安装的 Skill                                         | ③ |
+| `update`     | 检查并更新已安装的 Skill                                   | ③ |
+| `create`     | 在已有项目中创建新的 Skill 骨架                            | ② |
+| `new`        | 创建新的小程序项目骨架                                     | ② |
+| `validate`   | 对项目中 Skills 进行静态校验                               | ② |
+| `execute`    | 执行 Skill 的原子接口                                     | ② |
+| `render`     | 渲染 Skill 的原子组件                                     | ② |
+| `setup`      | 一站式环境搭建：聚合云函数、创建集合、检查服务             | ② |
+| `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） | ② |
+
+---
+
+## 工具 Skill（AI 引导层）
+
+本仓库 `skills/` 目录下的工具 Skill 不安装到小程序中，而是供 AI coding 工具读取执行的引导文档。AI 按 SKILL.md 的指引完成开发任务。
+
+| Skill | 用途 | 适用场景 |
+|-------|------|---------|
+| [`wxa-find-skills`](skills/wxa-find-skills/SKILL.md) | 搜索和安装社区业务 Skill | "给我的小程序加一个排队功能" |
+| [`wxa-create-ai-miniprogram`](skills/wxa-create-ai-miniprogram/SKILL.md) | 从零创建 AI 小程序 | "我想做一个咖啡点单小程序" |
+| [`wxa-create-mp-skill`](skills/wxa-create-mp-skill/SKILL.md) | 在项目中创建自定义 Skill | "帮我做一个预约试驾的 AI 功能" |
+
+AI coding 工具启动时，`mp-skills --help` 会显示这些工具 Skill 的本地路径。
 
 ---
 
