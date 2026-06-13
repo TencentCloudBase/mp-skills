@@ -106,9 +106,9 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         log('可用 npx mp-skills add <仓库> --all 查看所有可用 Skill')
         return
       }
-      // 需要 clone 来获取实际文件
+    // 需要 clone 来获取实际文件
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
-      skillLocalPath = join(tmpDir, 'skills', opts.skill)
+      skillLocalPath = join(tmpDir, match.path)
       installSkill(skillLocalPath, projectPath, {
         skillName: opts.skill,
         source: sourceInfo.repoName || sourceInfo.repoUrl,
@@ -125,7 +125,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
       let count = 0
       for (const s of skills) {
-        const sp = join(tmpDir, 'skills', s.name)
+        const sp = join(tmpDir, s.path)
         if (existsSync(sp)) {
           installSkill(sp, projectPath, {
             skillName: s.name,
@@ -144,12 +144,16 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
     // 未指定 → 交互选择
     if (process.stdin.isTTY && skills.length > 1) {
+      // 构建 skill path 映射
+      const pathMap = new Map<string, string>()
+      for (const s of skills) pathMap.set(s.name, s.path)
+
       // 从 clone 的本地文件读取描述（mcp.json）
       let descMap = new Map<string, string>()
       if (tmpDir) {
         for (const s of skills) {
           try {
-            const mcpPath = join(tmpDir, 'skills', s.name, 'mcp.json')
+            const mcpPath = join(tmpDir, s.path, 'mcp.json')
             if (existsSync(mcpPath)) {
               const mcp = JSON.parse(readFileSync(mcpPath, 'utf-8'))
               const apis = mcp.apis || []
@@ -175,7 +179,8 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
       for (const name of selectedNames) {
-        skillLocalPath = join(tmpDir, 'skills', name)
+        const skillPath = pathMap.get(name) || `skills/${name}`
+        skillLocalPath = join(tmpDir, skillPath)
         installSkill(skillLocalPath, projectPath, {
           skillName: name,
           source: sourceInfo.repoName || sourceInfo.repoUrl,

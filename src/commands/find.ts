@@ -1,8 +1,12 @@
 // ── find 命令 ──
 // fzf 风格交互式搜索远程 Skill（原生 readline，零依赖）
+// 从 registry 多源搜索（cnb.cool 远程 JSON → 本地 fallback）
 // 参考 vercel-labs/skills 的 find.ts 实现
 
 import * as readline from 'readline'
+import { readFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { listRemoteSkills, fetchRemoteFile } from '../lib/git.js'
 import pc from 'picocolors'
 
@@ -13,74 +17,149 @@ const SHOW_CURSOR = '\x1b[?25h'
 const CLEAR_DOWN = '\x1b[J'
 const MOVE_UP = (n: number) => `\x1b[${n}A`
 
-/** 搜索目标仓库 */
-const SEARCH_REPOS = ['TencentCloudBase/awesome-miniprogram-skills']
-
 interface SkillEntry {
   name: string
-  repo: string
+  repo: string        // 仓库名，用于 install 命令提示
   description: string
+  sourceLabel: string  // 来源标签，显示用
 }
 
-interface RemoteSource {
-  type: 'github'
-  original: string
-  repoName: string
+interface RegistryRepo {
+  name: string
+  repo: string
   ref: string
+  pathPattern?: string
+  mirrorUrl?: string
+  skills: Array<{ name: string; description: string }>
 }
 
-const DEFAULT_SOURCE: RemoteSource = {
-  type: 'github',
-  original: SEARCH_REPOS[0]!,
-  repoName: SEARCH_REPOS[0]!,
-  ref: 'main',
+interface Registry {
+  registryUrl?: string
+  repositories: RegistryRepo[]
+}
+
+// ── 加载注册表 ──
+
+const LOCAL_REGISTRY_PATH = join(
+  fileURLToPath(new URL('..', import.meta.url)),
+  'registry.json',
+)
+
+/** 读取本地 registry.json */
+function loadLocalRegistry(): Registry {
+  try {
+    return JSON.parse(readFileSync(LOCAL_REGISTRY_PATH, 'utf-8'))
+  } catch {
+    return { repositories: [] }
+  }
+}
+
+/** 从 cnb.cool 拉远程 registry.json，失败则读本地 */
+async function loadRegistry(): Promise<{ registry: Registry; fromRemote: boolean }> {
+  const local = loadLocalRegistry()
+  const remoteUrl = local.registryUrl
+
+  if (remoteUrl) {
+    try {
+      const res = await fetch(remoteUrl, { signal: AbortSignal.timeout(5000) })
+      if (res.ok) {
+        const remote: Registry = await res.json()
+        if (remote.repositories?.length) {
+          return { registry: remote, fromRemote: true }
+        }
+      }
+    } catch {
+      // fall through to local
+    }
+  }
+
+  return { registry: local, fromRemote: false }
 }
 
 // ── 数据源 ──
 
-async function fetchAllSkills(): Promise<SkillEntry[]> {
+async function fetchAllSkills(registry: Registry): Promise<SkillEntry[]> {
   const results: SkillEntry[] = []
-  for (const repo of SEARCH_REPOS) {
+
+  for (const repo of registry.repositories) {
     try {
-      const skills = await listRemoteSkills({
-        type: 'github',
-        original: repo,
-        repoName: repo,
-        ref: 'main',
-      })
-      for (const s of skills) {
-        results.push({ name: s.name, repo, description: '' })
+      if (repo.skills && repo.skills.length > 0) {
+        // 显式声明的 skill，直接使用
+        for (const s of repo.skills) {
+          results.push({
+            name: s.name,
+            repo: repo.repo,
+            description: s.description || '',
+            sourceLabel: repo.name,
+          })
+        }
+      } else {
+        // 未声明 → 通过 API 动态发现
+        const sourceInfo = { type: 'github' as const, original: repo.repo, repoName: repo.repo, ref: repo.ref }
+        const skills = await listRemoteSkills(sourceInfo, repo.pathPattern, repo.mirrorUrl)
+        for (const s of skills) {
+          results.push({
+            name: s.name,
+            repo: repo.repo,
+            description: '',
+            sourceLabel: repo.name,
+          })
+        }
       }
     } catch {
       // 单个仓库失败继续
     }
   }
+
   // 按名称排序
   results.sort((a, b) => a.name.localeCompare(b.name))
-  return results
+  // 去重（同名的保留第一个）
+  const seen = new Set<string>()
+  return results.filter((s) => {
+    if (seen.has(s.name)) return false
+    seen.add(s.name)
+    return true
+  })
 }
 
 /**
- * 并行预取所有 Skill 的 mcp.json，提取 description。
- * mcp.json 中顶层有 description 字段，优先取它；
- * 否则取第一个 apis[].description 的第一行作为摘要。
+ * 并行预取所有 Skill 的描述。
+ * 根据仓库结构适配不同路径（mcp.json 或 SKILL.md）。
  */
 async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
   const fetchOne = async (skill: SkillEntry) => {
-    const source: RemoteSource = { ...DEFAULT_SOURCE, repoName: skill.repo }
-    const content = await fetchRemoteFile(source, `skills/${skill.name}/mcp.json`)
-    if (!content) return
-    try {
-      const mcp = JSON.parse(content)
-      // 取 mcp 顶层 description 或首个 API 的描述第一行，限制 80 字
-      let desc = (mcp.description || '').split('\n')[0].trim()
-      if (!desc && Array.isArray(mcp.apis) && mcp.apis[0]?.description) {
-        desc = mcp.apis[0].description.split('\n')[0].trim()
+    // 已有描述的直接跳过
+    if (skill.description) return
+
+    // 尝试 mcp.json（awesome-miniprogram 结构）
+    const mcpPath = `skills/${skill.name}/mcp.json`
+    const sourceInfo = { type: 'github' as const, original: skill.repo, repoName: skill.repo, ref: '' }
+    const mcpContent = await fetchRemoteFile(sourceInfo, mcpPath)
+    if (mcpContent) {
+      try {
+        const mcp = JSON.parse(mcpContent)
+        let desc = (mcp.description || '').split('\n')[0].trim()
+        if (!desc && Array.isArray(mcp.apis) && mcp.apis[0]?.description) {
+          desc = mcp.apis[0].description.split('\n')[0].trim()
+        }
+        if (desc) {
+          skill.description = desc.length > 80 ? desc.slice(0, 80) + '...' : desc
+          return
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 尝试 SKILL.md（ai-mode-official 结构）
+    const skillMdPath = `${skill.name}/SKILL.md`
+    const mdContent = await fetchRemoteFile(sourceInfo, skillMdPath)
+    if (mdContent) {
+      // 从 frontmatter 中提取 description
+      const descMatch = mdContent.match(/^---\n[\s\S]*?\ndescription:\s*(.+)\n[\s\S]*?\n---/)
+      if (descMatch) {
+        skill.description = descMatch[1]!.trim().length > 80
+          ? descMatch[1]!.trim().slice(0, 80) + '...'
+          : descMatch[1]!.trim()
       }
-      if (desc.length > 80) desc = desc.slice(0, 80) + '...'
-      skill.description = desc
-    } catch {
-      // ignore
     }
   }
 
@@ -94,17 +173,17 @@ function matchSkill(skill: SkillEntry, query: string): boolean {
 
 // ── 非交互模式（有关键词或非 TTY） ──
 
-async function staticSearch(keyword: string): Promise<void> {
+async function staticSearch(keyword: string, registry: Registry): Promise<void> {
   console.log(`搜索 Skill${keyword ? `："${keyword}"` : ''}`)
   console.log('')
 
-  const allSkills = await fetchAllSkills()
+  const allSkills = await fetchAllSkills(registry)
   await fetchDescriptions(allSkills)
 
   const filtered = allSkills.filter((s) => matchSkill(s, keyword))
   const keywordLower = keyword.toLowerCase()
 
-  // 对匹配度排序：name 完全匹配 > name 包含 > desc 包含
+  // 对匹配度排序
   filtered.sort((a, b) => {
     const aName = a.name.toLowerCase()
     const bName = b.name.toLowerCase()
@@ -127,6 +206,9 @@ async function staticSearch(keyword: string): Promise<void> {
     if (r.description) {
       console.log(`    ${pc.dim(r.description)}`)
     }
+    if (r.sourceLabel) {
+      console.log(`    ${pc.dim('来源：')}${r.sourceLabel}`)
+    }
     console.log(`    ${pc.dim('安装：')}npx mp-skills add ${r.repo} --skill ${r.name}`)
     console.log('')
   }
@@ -136,13 +218,12 @@ async function staticSearch(keyword: string): Promise<void> {
 
 // ── 交互模式（无关键词 + TTY） ──
 
-async function interactiveSearch(): Promise<void> {
-  // 预加载所有 Skill
+async function interactiveSearch(registry: Registry): Promise<void> {
   const spinner = createInlineSpinner()
   spinner.start('正在获取 Skill 列表...')
   let allSkills: SkillEntry[] = []
   try {
-    allSkills = await fetchAllSkills()
+    allSkills = await fetchAllSkills(registry)
   } catch {
     allSkills = []
   }
@@ -154,7 +235,6 @@ async function interactiveSearch(): Promise<void> {
     return
   }
 
-  // 并行预取描述
   spinner.update('正在获取 Skill 描述...')
   await fetchDescriptions(allSkills)
   spinner.stop()
@@ -172,6 +252,9 @@ async function interactiveSearch(): Promise<void> {
   if (selected.description) {
     console.log(`  ${pc.dim(selected.description)}`)
   }
+  if (selected.sourceLabel) {
+    console.log(`  ${pc.dim('来源：')}${selected.sourceLabel}`)
+  }
   console.log('')
   console.log(`  ${pc.dim('安装命令：')}`)
   console.log(`  ${pc.cyan(`npx mp-skills add ${selected.repo} --skill ${selected.name}`)}`)
@@ -181,7 +264,7 @@ async function interactiveSearch(): Promise<void> {
 // ── 自定义搜索提示（原生 readline） ──
 
 async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | null> {
-  let results = allSkills.slice(0, 12) // 初始显示前 12 个
+  let results = allSkills.slice(0, 12)
   let selectedIndex = 0
   let query = ''
   let lastRenderedLines = 0
@@ -201,12 +284,10 @@ async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | nu
 
     const lines: string[] = []
 
-    // 搜索输入行
     const cursor = pc.bold('_')
     lines.push(`  ${pc.cyan('Search skills:')} ${query}${cursor}`)
     lines.push('')
 
-    // 结果区
     if (results.length === 0) {
       lines.push(`  ${pc.dim('（无匹配结果）')}`)
     } else {
@@ -218,9 +299,9 @@ async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | nu
         const isSelected = i === selectedIndex
         const arrow = isSelected ? pc.cyan('>') : ' '
         const name = isSelected ? pc.bold(pc.cyan(skill.name)) : pc.white(skill.name)
+        const label = skill.sourceLabel ? ` ${pc.dim('[' + skill.sourceLabel + ']')}` : ''
 
-        lines.push(`  ${arrow} ${name}`)
-        // 描述行
+        lines.push(`  ${arrow} ${name}${label}`)
         if (skill.description) {
           const descColor = isSelected ? pc.cyan : pc.dim
           lines.push(`    ${descColor(skill.description)}`)
@@ -295,7 +376,6 @@ async function runSearchPrompt(allSkills: SkillEntry[]): Promise<SkillEntry | nu
         return
       }
 
-      // 普通字符输入
       if (key.sequence && !key.ctrl && !key.meta && key.sequence.length === 1) {
         const char = key.sequence
         if (char >= ' ' && char <= '~') {
@@ -341,8 +421,14 @@ function createInlineSpinner() {
 // ── 入口 ──
 
 export async function findCommand(keyword: string): Promise<void> {
-  if (keyword || !process.stdin.isTTY) {
-    return staticSearch(keyword)
+  const { registry, fromRemote } = await loadRegistry()
+
+  if (fromRemote) {
+    console.log(`  ${pc.dim('（已加载远程注册表）')}`)
   }
-  return interactiveSearch()
+
+  if (keyword || !process.stdin.isTTY) {
+    return staticSearch(keyword, registry)
+  }
+  return interactiveSearch(registry)
 }

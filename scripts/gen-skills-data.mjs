@@ -5,7 +5,8 @@
 // 用法：node scripts/gen-skills-data.mjs
 // 在 build.mjs 的 gen-templates 之后调用。
 //
-// 注意：即使克隆失败也会生成一个包含空 Record 的合法文件，
+// 克隆优先使用 cnb.cool 镜像（国内加速），失败则回退到 GitHub。
+// 即使全部失败也会生成一个包含空 Record 的合法文件，
 // 保证 esbuild 打包不会因缺少依赖而崩溃。运行时代码会自动降级到 git clone。
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs'
@@ -16,8 +17,9 @@ import { randomUUID } from 'node:crypto'
 
 const ROOT = new URL('..', import.meta.url).pathname
 
-// 官方 skill 仓库
+// 官方 skill 仓库（mirror 优先）
 const SKILLS_REPO_URL = 'https://github.com/wechat-miniprogram/ai-mode-skills.git'
+const SKILLS_MIRROR_URL = 'https://cnb.cool/tencent/cloud/cloudbase/ai-mode-skills.git'
 const SKILLS_REPO_REF = 'master'
 
 // 需要打包的 skill 名称列表
@@ -50,24 +52,28 @@ export const SKILLS_DATA: Record<string, string> = ${JSON.stringify(skillData)}
   console.log(`* 已生成 src/lib/skills-data.ts (${count} 个文件)`)
 }
 
-// ── 步骤 1：克隆仓库到临时目录 ──
+// ── 步骤 1：克隆仓库到临时目录（mirror 优先，GitHub 回退）──
 const tempDir = join(tmpdir(), 'mp-skills-gen-' + randomUUID().slice(0, 8))
-console.log(`* 克隆 ${SKILLS_REPO_URL} ...`)
 
 let cloneOk = false
-try {
-  execSync(`git clone --depth 1 --branch "${SKILLS_REPO_REF}" "${SKILLS_REPO_URL}" "${tempDir}"`, {
-    stdio: 'pipe',
-    timeout: 60_000,
-  })
-  cloneOk = true
-} catch (err) {
-  const msg = err.stderr?.toString() || err.message
-  console.warn(`  ! 克隆失败: ${msg}`)
-  console.warn('  ! 将生成空的 skills-data.ts，运行时回退到 git clone')
+const cloneUrls = [SKILLS_MIRROR_URL, SKILLS_REPO_URL]
+for (const url of cloneUrls) {
+  console.log(`* 克隆 ${url} ...`)
+  try {
+    execSync(`git clone --depth 1 --branch "${SKILLS_REPO_REF}" "${url}" "${tempDir}"`, {
+      stdio: 'pipe',
+      timeout: 60_000,
+    })
+    cloneOk = true
+    break
+  } catch (err) {
+    const msg = err.stderr?.toString() || err.message
+    console.warn(`  ! 克隆失败: ${msg}`)
+  }
 }
 
 if (!cloneOk) {
+  console.warn('  ! 所有源均克隆失败，将生成空的 skills-data.ts，运行时回退到 git clone')
   writeOutput({})
   process.exit(0) // 正常退出，不阻塞 build
 }

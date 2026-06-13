@@ -1,11 +1,14 @@
 {
-  "version": 2,
-  "description": "微信小程序 AI Skill 注册表 — 运行时从 GitHub 获取",
+  "version": 3,
+  "description": "微信小程序 AI Skill 注册表",
+  "registryUrl": "https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills/-/raw/main/registry.json",
   "repositories": [
     {
       "name": "awesome-miniprogram",
       "repo": "TencentCloudBase/awesome-miniprogram-skills",
       "ref": "feat/skill-market",
+      "pathPattern": "skills/<name>/mcp.json",
+      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/awesome-miniprogram-skills.git",
       "skills": [
         { "name": "drink-skill", "description": "咖啡点单：推荐饮品、搜索、选规格、填地址、下单支付" },
         { "name": "order-skill", "description": "外卖点餐：搜索餐厅、浏览菜单、下单、查看配送状态" },
@@ -24,8 +27,14 @@
     {
       "name": "ai-mode-official",
       "repo": "wechat-miniprogram/ai-mode-skills",
-      "ref": "main",
-      "skills": []
+      "ref": "master",
+      "pathPattern": "<name>/SKILL.md",
+      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/ai-mode-skills.git",
+      "skills": [
+        { "name": "wxa-skills-validate", "description": "校验和修复小程序 AI SKILLs 产物" },
+        { "name": "wxa-skills-generate", "description": "AI 辅助 Skill 生成工作流与规范" },
+        { "name": "wxa-skills-eval", "description": "端到端质量评估" }
+      ]
     }
   ]
 }
