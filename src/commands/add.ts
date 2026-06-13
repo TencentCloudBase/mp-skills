@@ -106,7 +106,7 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
         log('可用 npx mp-skills add <仓库> --all 查看所有可用 Skill')
         return
       }
-    // 需要 clone 来获取实际文件
+      // 需要 clone 来获取实际文件
       tmpDir = cloneRepo(sourceInfo.repoUrl!, sourceInfo.ref)
       skillLocalPath = join(tmpDir, match.path)
       installSkill(skillLocalPath, projectPath, {

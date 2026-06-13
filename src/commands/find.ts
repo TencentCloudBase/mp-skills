@@ -19,9 +19,9 @@ const MOVE_UP = (n: number) => `\x1b[${n}A`
 
 interface SkillEntry {
   name: string
-  repo: string        // 仓库名，用于 install 命令提示
+  repo: string // 仓库名，用于 install 命令提示
   description: string
-  sourceLabel: string  // 来源标签，显示用
+  sourceLabel: string // 来源标签，显示用
 }
 
 interface RegistryRepo {
@@ -40,10 +40,7 @@ interface Registry {
 
 // ── 加载注册表 ──
 
-const LOCAL_REGISTRY_PATH = join(
-  fileURLToPath(new URL('..', import.meta.url)),
-  'registry.json',
-)
+const LOCAL_REGISTRY_PATH = join(fileURLToPath(new URL('..', import.meta.url)), 'registry.json')
 
 /** 读取本地 registry.json */
 function loadLocalRegistry(): Registry {
@@ -146,7 +143,9 @@ async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
           skill.description = desc.length > 80 ? desc.slice(0, 80) + '...' : desc
           return
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // 尝试 SKILL.md（ai-mode-official 结构）
@@ -156,9 +155,8 @@ async function fetchDescriptions(skills: SkillEntry[]): Promise<void> {
       // 从 frontmatter 中提取 description
       const descMatch = mdContent.match(/^---\n[\s\S]*?\ndescription:\s*(.+)\n[\s\S]*?\n---/)
       if (descMatch) {
-        skill.description = descMatch[1]!.trim().length > 80
-          ? descMatch[1]!.trim().slice(0, 80) + '...'
-          : descMatch[1]!.trim()
+        skill.description =
+          descMatch[1]!.trim().length > 80 ? descMatch[1]!.trim().slice(0, 80) + '...' : descMatch[1]!.trim()
       }
     }
   }

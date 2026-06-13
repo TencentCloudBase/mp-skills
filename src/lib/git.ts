@@ -71,10 +71,7 @@ export async function listRemoteSkills(
 }
 
 /** 从 GitHub Trees API 的 tree 数组中解析 skill 列表 */
-function parseSkillTree(
-  tree: Array<{ path: string }>,
-  pattern: string,
-): Array<{ name: string; path: string }> {
+function parseSkillTree(tree: Array<{ path: string }>, pattern: string): Array<{ name: string; path: string }> {
   const regex = buildPathPattern(pattern)
   const skills = new Map<string, string>() // name → dir path
 
