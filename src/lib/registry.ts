@@ -3,10 +3,10 @@
 //
 // 加载顺序：
 //   1. GitHub raw（远程最新，从 awesome-miniprogram-skills 仓库获取）
-//   2. 本地文件（npm 包内兜底）
+//   2. cnb.cool raw（国内加速，从 mirrorUrl 推导 URL）
+//   3. 本地文件（npm 包内兜底）
 //
-// cnb.cool 镜像体现在 add 的 cloneRepo 使用 mirrorUrl，
-// 以及 gen-skills-data.mjs 的克隆环节。
+// 从哪个源加载成功，add 的 cloneRepo 就使用对应的 mirrorUrl。
 
 import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -27,11 +27,9 @@ export interface Registry {
 }
 
 // ── 本地文件路径 ──
-// esbuild 打包后 __dirname ≈ dist/，registry.json 在 src/
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const LOCAL_PATH = join(__dirname, '..', 'src', 'registry.json')
 
-/** 读取本地 registry.json */
 function loadLocal(): Registry | null {
   try {
     if (existsSync(LOCAL_PATH)) {
@@ -44,9 +42,20 @@ function loadLocal(): Registry | null {
 }
 
 /**
+ * 从 mirrorUrl 推导 cnb.cool 的 raw 文件 URL。
+ * mirrorUrl: https://cnb.cool/.../repo.git
+ * raw URL:   https://cnb.cool/.../repo/-/git/raw/{ref}/filepath
+ */
+function cnbRawUrl(mirrorUrl: string, _ref: string, filePath: string): string {
+  // cnb.cool 同步始终推送到默认分支（main），忽略源 ref
+  const base = mirrorUrl.replace(/\.git$/, '')
+  return `${base}/-/git/raw/main/${filePath}`
+}
+
+/**
  * 加载注册表。
  * 返回 { registry, source }
- * source: 'github' | 'local'
+ * source: 'github' | 'cnb' | 'local'
  */
 export async function loadRegistry(): Promise<{ registry: Registry; source: string }> {
   const local = loadLocal()
@@ -54,7 +63,7 @@ export async function loadRegistry(): Promise<{ registry: Registry; source: stri
   const repoName = repo?.repo
   const ref = repo?.ref || 'main'
 
-  // ── 1. 尝试从 GitHub raw 加载（awesome-miniprogram-skills 仓库中的远程 registry）
+  // ── 1. GitHub raw ──
   if (repoName) {
     const githubUrl = `https://raw.githubusercontent.com/${repoName}/${ref}/registry.json`
     try {
@@ -70,7 +79,24 @@ export async function loadRegistry(): Promise<{ registry: Registry; source: stri
     }
   }
 
-  // ── 2. 本地兜底 ──
+  // ── 2. cnb.cool raw（从第一个有 mirrorUrl 的仓库推导） ──
+  for (const r of local?.repositories || []) {
+    if (!r.mirrorUrl) continue
+    const url = cnbRawUrl(r.mirrorUrl, r.ref || 'main', 'registry.json')
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+      if (res.ok) {
+        const remote: Registry = await res.json()
+        if (remote.repositories?.length) {
+          return { registry: remote, source: 'cnb' }
+        }
+      }
+    } catch {
+      continue
+    }
+  }
+
+  // ── 3. 本地兜底 ──
   if (local) {
     return { registry: local, source: 'local' }
   }
