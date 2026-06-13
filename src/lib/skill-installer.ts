@@ -5,11 +5,12 @@
 // 这些是「工具型」skill，全局安装一次即可复用，不污染 cwd 或被测项目，
 // 也不走 mp-skills add（避免误注入 app.json）。
 
-import { existsSync, cpSync, rmSync } from 'node:fs'
+import { existsSync, cpSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
+import { SKILLS_DATA } from './skills-data.js'
 import { spinner, warn, resolveMiniprogramRoot } from './utils.js'
 
 // 官方 skill 仓库
@@ -81,13 +82,36 @@ export function findSkillDir(skillName: string, verifySubpath: string, extraBase
 }
 
 /**
- * 把指定 skill 从官方仓库下载到全局目录 ~/.mp-skills/skills/<skillName>。
- * 使用 git clone --depth 1 克隆后提取子目录。
+ * 把指定 skill 下载到全局目录 ~/.mp-skills/skills/<skillName>。
+ *
+ * 下载顺序：
+ *   1. 先从内联数据 SKILLS_DATA 中提取（ALL IN ONE，无网络依赖）
+ *   2. 内联数据中不存在 → git clone --depth 1 回退
  */
 async function downloadSkill(skillName: string, verifySubpath: string): Promise<string | null> {
   const targetDir = join(GLOBAL_SKILLS_DIR, skillName)
   await mkdir(GLOBAL_SKILLS_DIR, { recursive: true })
 
+  // 优先从内联数据提取
+  const prefix = skillName + '/'
+  const hasBundled = Object.keys(SKILLS_DATA).some((k) => k.startsWith(prefix))
+  if (hasBundled) {
+    mkdirSync(targetDir, { recursive: true })
+    for (const [key, content] of Object.entries(SKILLS_DATA)) {
+      if (key.startsWith(prefix)) {
+        const relPath = key.slice(prefix.length)
+        const fullPath = join(targetDir, relPath)
+        mkdirSync(dirname(fullPath), { recursive: true })
+        writeFileSync(fullPath, content, 'utf-8')
+      }
+    }
+    if (existsSync(join(targetDir, verifySubpath))) return targetDir
+    warn(`内联数据不完整（缺少 ${verifySubpath}），回退到 git clone`)
+    // 内联数据不完整时继续走 git clone
+    rmSync(targetDir, { recursive: true, force: true })
+  }
+
+  // 回退：git clone
   const tempDir = join(GLOBAL_SKILLS_DIR, `.${skillName}-tmp`)
   try {
     const cloneResult = spawnSync('git', ['clone', '--depth', '1', '--single-branch', SKILLS_REPO_URL, tempDir], {

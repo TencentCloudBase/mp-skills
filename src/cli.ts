@@ -43,9 +43,9 @@ program.name('mp-skills').description('微信小程序 AI Skills 管理工具').
 
 // ── 工具型 Skill 定义 ──
 const TOOL_SKILLS = [
-  { name: 'wxa-skills-generate', verify: 'SKILL.md' },
-  { name: 'wxa-skills-validate', verify: 'scripts/validate.mjs' },
-  { name: 'wxa-skills-eval', verify: 'cli/index.js' },
+  { name: 'wxa-skills-generate', verify: 'SKILL.md', desc: 'AI 辅助生成 Skill 代码' },
+  { name: 'wxa-skills-validate', verify: 'scripts/validate.mjs', desc: 'Skill 静态校验 + 编译 + 执行 + 渲染' },
+  { name: 'wxa-skills-eval', verify: 'cli/index.js', desc: '端到端质量评估' },
 ]
 
 // Logo 在 help 顶部也显示
@@ -55,7 +55,7 @@ program.addHelpText('beforeAll', getLogoLines().join('\n'))
 const skillPathLines = TOOL_SKILLS.map((s) => {
   const dir = findSkillDir(s.name, 'SKILL.md', [])
   const path = dir ? dir + '/SKILL.md' : GLOBAL_SKILLS_DIR + '/' + s.name + '/SKILL.md (未安装)'
-  return `  ${s.name}: ${path}`
+  return `  ${s.name}: ${path}  ${s.desc}`
 })
 program.addHelpText('afterAll', '\n工具型 Skill 路径（供 AI 模型引用）:\n' + skillPathLines.join('\n'))
 

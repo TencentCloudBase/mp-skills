@@ -10,10 +10,17 @@
 // ── 第 1 步：生成内联模板数据 ──
 await import('./gen-templates.mjs');
 
+// ── 第 2 步：生成内联官方 skill 数据（ALL IN ONE，避免运行时 git clone）──
+try {
+  await import('./gen-skills-data.mjs');
+} catch (err) {
+  console.warn('  ! 生成内联 skill 数据失败（跳过，运行时将回退到 git clone）:', err.message);
+}
+
 // 格式化生成的模板数据（确保 CI format:check 通过）
 import { execSync } from 'node:child_process';
 try {
-  execSync('npx prettier --write src/lib/templates-data.ts', { stdio: 'ignore' });
+  execSync('npx prettier --write src/lib/templates-data.ts src/lib/skills-data.ts', { stdio: 'ignore', timeout: 30000 });
 } catch {
   // prettier 不可用时忽略
 }

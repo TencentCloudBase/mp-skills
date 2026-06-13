@@ -4,6 +4,9 @@
 //
 // 用法：node scripts/gen-skills-data.mjs
 // 在 build.mjs 的 gen-templates 之后调用。
+//
+// 注意：即使克隆失败也会生成一个包含空 Record 的合法文件，
+// 保证 esbuild 打包不会因缺少依赖而崩溃。运行时代码会自动降级到 git clone。
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -33,17 +36,40 @@ function collectFiles(dir) {
   return result.sort()
 }
 
+// ── 最终写文件（无论在哪个分支结束，都会执行）──
+function writeOutput(skillData) {
+  const output = `// ── 内联官方 skill 数据（由 scripts/gen-skills-data.mjs 自动生成）──
+// 包含 wxa-skills-validate / wxa-skills-generate / wxa-skills-eval
+// 避免运行时从 GitHub git clone，实现 ALL IN ONE
+
+export const SKILLS_DATA: Record<string, string> = ${JSON.stringify(skillData)}
+`
+
+  writeFileSync(join(ROOT, 'src', 'lib', 'skills-data.ts'), output, 'utf-8')
+  const count = Object.keys(skillData).length
+  console.log(`* 已生成 src/lib/skills-data.ts (${count} 个文件)`)
+}
+
 // ── 步骤 1：克隆仓库到临时目录 ──
 const tempDir = join(tmpdir(), 'mp-skills-gen-' + randomUUID().slice(0, 8))
 console.log(`* 克隆 ${SKILLS_REPO_URL} ...`)
+
+let cloneOk = false
 try {
   execSync(`git clone --depth 1 --branch "${SKILLS_REPO_REF}" "${SKILLS_REPO_URL}" "${tempDir}"`, {
     stdio: 'pipe',
     timeout: 60_000,
   })
+  cloneOk = true
 } catch (err) {
-  console.error(`  克隆失败: ${err.stderr?.toString() || err.message}`)
-  process.exit(1)
+  const msg = err.stderr?.toString() || err.message
+  console.warn(`  ! 克隆失败: ${msg}`)
+  console.warn('  ! 将生成空的 skills-data.ts，运行时回退到 git clone')
+}
+
+if (!cloneOk) {
+  writeOutput({})
+  process.exit(0) // 正常退出，不阻塞 build
 }
 
 // ── 步骤 2：读取所有 skill 文件 ──
@@ -74,12 +100,4 @@ try {
 } catch {}
 
 // ── 步骤 4：生成 TypeScript 数据文件 ──
-const output = `// ── 内联官方 skill 数据（由 scripts/gen-skills-data.mjs 自动生成）──
-// 包含 wxa-skills-validate / wxa-skills-generate / wxa-skills-eval
-// 避免运行时从 GitHub git clone，实现 ALL IN ONE
-
-export const SKILLS_DATA: Record<string, string> = ${JSON.stringify(skillData, null, 2)}
-`
-
-writeFileSync(join(ROOT, 'src', 'lib', 'skills-data.ts'), output, 'utf-8')
-console.log(`* 已生成 src/lib/skills-data.ts (${Object.keys(skillData).length} 个文件)`)
+writeOutput(skillData)
