@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import { setVersion, trackCommand } from './lib/telemetry.js'
 import { ENV } from './lib/llm-credentials.js'
 import { showLogo, getLogoLines } from './lib/logo.js'
+import { ensureSkill } from './lib/skill-installer.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json')
@@ -42,6 +43,24 @@ program.name('mp-skills').description('微信小程序 AI Skills 管理工具').
 
 // Logo 在 help 顶部也显示
 program.addHelpText('beforeAll', getLogoLines().join('\n'))
+
+// ── 启动时确保工具型 Skill 就位并打印路径 ──
+const TOOL_SKILLS = [
+  { name: 'wxa-skills-generate', verify: 'SKILL.md' },
+  { name: 'wxa-skills-validate', verify: 'scripts/validate.mjs' },
+  { name: 'wxa-skills-eval', verify: 'cli/index.js' },
+]
+let _skillsEnsured = false
+program.hook('preAction', async () => {
+  if (_skillsEnsured) return
+  _skillsEnsured = true
+  for (const s of TOOL_SKILLS) {
+    const dir = await ensureSkill({ skillName: s.name, verifySubpath: s.verify, spinnerEnabled: false })
+    if (dir) {
+      console.log(`  ${s.name}: ${dir}`)
+    }
+  }
+})
 
 // ── add — 安装 Skill ─────────────────────────────────
 program
