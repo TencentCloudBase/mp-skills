@@ -45,8 +45,9 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build publish manifest
-        run: node scripts/publish-to-clawhub.mjs --skills-dir skills --output .clawhub-manifest.json
+      - name: Generate publish info
+        id: publish_info
+        run: node scripts/publish-to-clawhub.mjs --skills-dir skills --bump "$BUMP"
 
       - name: Install ClawHub CLI
         if: ${{ env.DRY_RUN != 'true' }}
@@ -58,16 +59,11 @@ jobs:
           CLAWDHUB_TOKEN: ${{ secrets.CLAWDHUB_TOKEN }}
         run: clawhub login --token "$CLAWDHUB_TOKEN" --no-browser
 
-      - name: Publish to ClawHub
+      - name: Publish each skill
         env:
           CLAWDHUB_TOKEN: ${{ secrets.CLAWDHUB_TOKEN }}
         run: |
-          if [ "$DRY_RUN" = "true" ]; then
-            echo "[dry-run] Would publish manifest: .clawhub-manifest.json"
-            cat .clawhub-manifest.json
-          else
-            clawhub publish --manifest .clawhub-manifest.json --bump "$BUMP"
-          fi
+          node scripts/publish-to-clawhub.mjs --skills-dir skills --bump "$BUMP" --publish
 
       - name: Job summary
         run: |
