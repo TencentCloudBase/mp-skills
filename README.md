@@ -22,45 +22,6 @@
 ---
 
 
----
-
-## 理解 mp-skills 的三层结构
-
-这个仓库包含**三种不同类型**的东西，容易混淆，先理清楚：
-
-### ③ 业务 Skill — 小程序里的 AI 能力
-
-安装到小程序项目中，为用户提供具体的 AI 功能。
-
-> 例子：queue-skill（排队取号）、order-skill（点餐）、payment-skill（支付）
->
-> 安装方式：`npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill queue-skill`
-
-业务 Skill 存放在单独的 [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 仓库，本仓库不包含。
-
-### ② CLI 工具 — 你直接用的命令行
-
-管理业务 Skill 的安装、校验、评测和环境搭建。
-
-> 例子：
-> ```
-> npx mp-skills find            # 搜索业务 Skill
-> npx mp-skills add ...         # 安装
-> npx mp-skills setup           # 初始化云开发环境
-> npx mp-skills validate        # 校验业务 Skill 质量
-> ```
-
-### ① 工具 Skill — 给 AI 读的引导文档
-
-本仓库 skills/ 下的三个 SKILL.md 文件，**不安装到小程序中**。AI coding 工具读取后按步骤执行，帮你完成开发任务。
-
-> 例子：
-> - wxa-find-skills → AI 读完后知道怎么搜索安装业务 Skill
-> - wxa-create-ai-miniprogram → AI 读完后知道怎么从零创建项目
-> - wxa-create-mp-skill → AI 读完后知道怎么生成自定义 Skill 代码
-
-运行 npx mp-skills --help 底部会显示这三个工具 Skill 的本地路径。
-
 ## 快速开始
 ### 发现并安装 Skill
 
@@ -96,6 +57,11 @@ npx mp-skills setup
 `setup` 会聚合云函数、创建数据库集合、检查所需服务，让项目快速就绪。
 
 ---
+
+
+
+
+
 
 ## 命令
 
@@ -566,3 +532,50 @@ mp-skills --help
 - [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) — 完整 Skill 仓库
 - [wechat-miniprogram/ai-mode-skills](https://github.com/wechat-miniprogram/ai-mode-skills) — 微信官方 Skill 示例
 - [微信小程序 AI 开发模式文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html)
+
+---
+
+## 理解 mp-skills 的三层结构
+
+这个仓库包含**三种不同类型**的东西，容易混淆，先理清楚：
+
+### ③ 业务 Skill — 小程序里的 AI 能力
+
+安装到小程序项目中，为用户提供具体的 AI 功能。
+
+> 例子：queue-skill（排队取号）、order-skill（点餐）、payment-skill（支付）
+>
+> 安装方式：`npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill queue-skill`
+
+业务 Skill 存放在单独的 [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 仓库，本仓库不包含。
+
+### ② CLI 工具 — 你直接用的命令行
+
+管理业务 Skill 的安装、校验、评测和环境搭建。
+
+> 例子：
+> ```
+> npx mp-skills find            # 搜索业务 Skill
+> npx mp-skills add ...         # 安装
+> npx mp-skills setup           # 初始化云开发环境
+> npx mp-skills validate        # 校验业务 Skill 质量
+> ```
+
+### ① 工具 Skill — 给 AI 读的引导文档
+
+本仓库 `skills/` 下的三个 SKILL.md 文件，**不安装到小程序中**。AI coding 工具读取后按步骤执行，帮你完成开发任务。
+
+> 例子：
+> - `wxa-find-skills` → AI 读完后知道怎么搜索安装业务 Skill
+> - `wxa-create-ai-miniprogram` → AI 读完后知道怎么从零创建项目
+> - `wxa-create-mp-skill` → AI 读完后知道怎么生成自定义 Skill 代码
+
+安装方式（和安装业务 Skill 一样）：
+
+```bash
+npx mp-skills add TencentCloudBase/mp-skills --skill wxa-find-skills
+npx mp-skills add TencentCloudBase/mp-skills --skill wxa-create-ai-miniprogram
+npx mp-skills add TencentCloudBase/mp-skills --skill wxa-create-mp-skill
+```
+
+运行 `npx mp-skills --help` 底部也会显示这三个工具 Skill 的本地路径。
