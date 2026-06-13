@@ -19,7 +19,7 @@ const ROOT = new URL('..', import.meta.url).pathname
 
 // 官方 skill 仓库（mirror 优先）
 const SKILLS_REPO_URL = 'https://github.com/wechat-miniprogram/ai-mode-skills.git'
-const SKILLS_MIRROR_URL = 'https://cnb.cool/tencent/cloud/cloudbase/ai-mode-skills.git'
+const SKILLS_MIRROR_URL = '' // 暂无可用的 cnb.cool 镜像，直接走 GitHub
 const SKILLS_REPO_REF = 'master'
 
 // 需要打包的 skill 名称列表
@@ -56,7 +56,7 @@ export const SKILLS_DATA: Record<string, string> = ${JSON.stringify(skillData)}
 const tempDir = join(tmpdir(), 'mp-skills-gen-' + randomUUID().slice(0, 8))
 
 let cloneOk = false
-const cloneUrls = [SKILLS_MIRROR_URL, SKILLS_REPO_URL]
+const cloneUrls = SKILLS_MIRROR_URL ? [SKILLS_MIRROR_URL, SKILLS_REPO_URL] : [SKILLS_REPO_URL]
 for (const url of cloneUrls) {
   console.log(`* 克隆 ${url} ...`)
   try {

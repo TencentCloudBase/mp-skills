@@ -29,7 +29,7 @@
       "repo": "wechat-miniprogram/ai-mode-skills",
       "ref": "master",
       "pathPattern": "<name>/SKILL.md",
-      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/ai-mode-skills.git",
+      "mirrorUrl": "https://cnb.cool/tencent/cloud/cloudbase/ai-mode-demo.git",
       "skills": [
         { "name": "wxa-skills-validate", "description": "校验和修复小程序 AI SKILLs 产物" },
         { "name": "wxa-skills-generate", "description": "AI 辅助 Skill 生成工作流与规范" },
