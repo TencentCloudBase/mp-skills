@@ -10,12 +10,7 @@ import { colors, kv, log, ok, spinner, title, warn, resolveMiniprogramRoot } fro
 import { trackCommand } from '../lib/telemetry.js'
 import { ensureLlmCredentials, applyProviderPreset, type LlmCredentials } from '../lib/llm-credentials.js'
 import { upsertEnvVars } from '../lib/env-file.js'
-import {
-  resolveOpencodeBin,
-  buildOpencodeConfig,
-  opencodeModelArg,
-  runOpencodeInteractive,
-} from '../lib/opencode.js'
+import { resolveOpencodeBin, buildOpencodeConfig, opencodeModelArg, runOpencodeInteractive } from '../lib/opencode.js'
 import { ensureSkill } from '../lib/skill-installer.js'
 
 interface EvalOptions {
@@ -213,13 +208,7 @@ async function runAgentMode(ctx: {
   }
 
   // 交互式 TUI：工作目录设为评测工具目录，预置初始任务消息
-  const args = [
-    evalSkillDir,
-    '--model',
-    opencodeModelArg(creds),
-    '--prompt',
-    prompt,
-  ]
+  const args = [evalSkillDir, '--model', opencodeModelArg(creds), '--prompt', prompt]
 
   const exitCode = await runOpencodeInteractive(opencodeBin, args, childEnv)
   log('')
