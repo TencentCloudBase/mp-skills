@@ -207,3 +207,5 @@ node <validate-dir>/scripts/render.mjs \
 ## ClawHub
 
 https://clawhub.ai/binggg/wxa-create-mp-skill
+
+安装：`npx skills add binggg/wxa-create-mp-skill`

@@ -570,15 +570,15 @@ mp-skills --help
 > - `wxa-create-ai-miniprogram` → AI 读完后知道怎么从零创建项目
 > - `wxa-create-mp-skill` → AI 读完后知道怎么生成自定义 Skill 代码
 
-安装方式（通过 ClawHub 安装给 AI coding 工具使用）：
+安装方式（通过 skills.sh 安装给 AI coding 工具使用）：
 
 ```bash
-npx skills add wxa-find-skills
-npx skills add wxa-create-ai-miniprogram
-npx skills add wxa-create-mp-skill
+npx skills add binggg/wxa-find-skills
+npx skills add binggg/wxa-create-ai-miniprogram
+npx skills add binggg/wxa-create-mp-skill
 ```
 
-运行 `npx mp-skills --help` 底部也会显示这三个工具 Skill 的本地路径。
+也可在 [skills.sh](https://www.skills.sh/binggg) 上查看。运行 `npx mp-skills --help` 底部也会显示这三个工具 Skill 的本地路径。
 
 也可通过 ClawHub 社区查看：
 

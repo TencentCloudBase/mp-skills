@@ -169,3 +169,5 @@ npx mp-skills setup
 ## ClawHub
 
 https://clawhub.ai/binggg/wxa-create-ai-miniprogram
+
+安装：`npx skills add binggg/wxa-create-ai-miniprogram`

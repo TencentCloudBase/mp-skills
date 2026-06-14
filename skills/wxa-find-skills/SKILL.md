@@ -144,3 +144,5 @@ npx mp-skills setup
 ## ClawHub
 
 https://clawhub.ai/binggg/wxa-find-skills
+
+安装：`npx skills add binggg/wxa-find-skills`
