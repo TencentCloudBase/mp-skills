@@ -208,4 +208,4 @@ node <validate-dir>/scripts/render.mjs \
 
 https://clawhub.ai/binggg/wxa-create-mp-skill
 
-安装：`npx skills add binggg/wxa-create-mp-skill`
+安装：`npx skills add TencentCloudBase/mp-skills/wxa-create-mp-skill`

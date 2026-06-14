@@ -145,4 +145,4 @@ npx mp-skills setup
 
 https://clawhub.ai/binggg/wxa-find-skills
 
-安装：`npx skills add binggg/wxa-find-skills`
+安装：`npx skills add TencentCloudBase/mp-skills/wxa-find-skills`

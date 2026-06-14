@@ -573,12 +573,16 @@ mp-skills --help
 安装方式（通过 skills.sh 安装给 AI coding 工具使用）：
 
 ```bash
-npx skills add binggg/wxa-find-skills
-npx skills add binggg/wxa-create-ai-miniprogram
-npx skills add binggg/wxa-create-mp-skill
+# 安装全部三个
+npx skills add TencentCloudBase/mp-skills
+
+# 或安装指定 Skill
+npx skills add TencentCloudBase/mp-skills/wxa-find-skills
+npx skills add TencentCloudBase/mp-skills/wxa-create-ai-miniprogram
+npx skills add TencentCloudBase/mp-skills/wxa-create-mp-skill
 ```
 
-也可在 [skills.sh](https://www.skills.sh/binggg) 上查看。运行 `npx mp-skills --help` 底部也会显示这三个工具 Skill 的本地路径。
+也可在 [skills.sh](https://www.skills.sh/TencentCloudBase/mp-skills) 上查看。
 
 也可通过 ClawHub 社区查看：
 
