@@ -49,6 +49,15 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
     let skillLocalPath: string
     let tmpDir: string | undefined
 
+    // 如果指定了 skill 名，先检查本地是否已安装
+    if (opts.skill) {
+      const installedDir = join(mpRoot, 'skills', opts.skill)
+      if (existsSync(installedDir)) {
+        ok(`"${opts.skill}" 已安装`)
+        return
+      }
+    }
+
     if (sourceInfo.type === 'local') {
       skillLocalPath = sourceInfo.localPath!
 

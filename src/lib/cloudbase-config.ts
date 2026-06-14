@@ -175,7 +175,7 @@ export function writeSharedConfig(projectPath: string, envId: string): boolean {
   const mpRoot = resolveMiniprogramRoot(projectPath)
   if (!mpRoot) return false
 
-  const configPath = join(projectPath, mpRoot, 'skills', '_shared', 'mp-skills-shared', 'config.js')
+  const configPath = join(mpRoot, 'skills', '_shared', 'mp-skills-shared', 'config.js')
   const dir = join(configPath, '..')
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
