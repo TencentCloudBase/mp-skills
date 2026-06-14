@@ -573,13 +573,13 @@ mp-skills --help
 安装方式（通过 skills.sh 安装给 AI coding 工具使用）：
 
 ```bash
-# 安装全部三个
-npx skills add TencentCloudBase/mp-skills
+# 安装全部
+npx skills add TencentCloudBase/mp-skills --all
 
 # 或安装指定 Skill
-npx skills add TencentCloudBase/mp-skills/wxa-find-skills
-npx skills add TencentCloudBase/mp-skills/wxa-create-ai-miniprogram
-npx skills add TencentCloudBase/mp-skills/wxa-create-mp-skill
+npx skills add TencentCloudBase/mp-skills -s wxa-find-skills
+npx skills add TencentCloudBase/mp-skills -s wxa-create-ai-miniprogram
+npx skills add TencentCloudBase/mp-skills -s wxa-create-mp-skill
 ```
 
 也可在 [skills.sh](https://www.skills.sh/TencentCloudBase/mp-skills) 上查看。
