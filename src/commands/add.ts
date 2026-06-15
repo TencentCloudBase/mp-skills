@@ -1,15 +1,13 @@
 // ── add 命令 ──
 // 安装 Skill 到目标项目
 
-import { existsSync, readdirSync, readFileSync, Dirent } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, type Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseSource } from '../lib/source-parser.js'
 import { cloneRepo, cleanupClone, listRemoteSkills } from '../lib/git.js'
 import { installSkill } from '../lib/installer.js'
-import { readLock, readDeployedState } from '../lib/lock-file.js'
+import { readLock } from '../lib/lock-file.js'
 import { log, warn, ok, title, resolveMiniprogramRoot } from '../lib/utils.js'
-import { scanCloudFunctions } from '../lib/cloudfunction-scanner.js'
-import { scanCollections, scanSharedCollections } from '../lib/database-scanner.js'
 import { trackCommand } from '../lib/telemetry.js'
 import { fuzzySelect, SelectItem } from '../lib/selector.js'
 import { loadRegistry, lookupRepoConfig, getCloneUrl, getRawUrl } from '../lib/registry.js'
@@ -232,22 +230,18 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 }
 
 /**
- * 检测是否有未部署的云开发依赖，提示运行 setup
+ * 安装完成后提示运行 setup
  */
 function promptSetupIfNeeded(projectPath: string): void {
-  const deployed = readDeployedState(projectPath)
-  const funcs = scanCloudFunctions(projectPath)
-  const collections = scanCollections(projectPath)
-  const shared = scanSharedCollections(projectPath)
+  const lockPath = join(projectPath, 'skills-lock.json')
+  let lock: { scriptsSetup?: unknown[] } = {}
+  try { lock = JSON.parse(readFileSync(lockPath, 'utf-8')) } catch {}
 
-  const missingFuncs = funcs.filter((f) => !deployed?.cloudfunctions?.includes(f.name))
-  const allColNames = new Set<string>()
-  for (const c of collections) allColNames.add(c.name)
-  for (const c of shared as any) allColNames.add(c.name)
-  const missingCols = Array.from(allColNames).filter((c) => !deployed?.collections?.includes(c))
+  const scriptsSetup = lock.scriptsSetup || []
+  const allDone = scriptsSetup.every((r: any) => r.status === 'done')
 
-  if (missingFuncs.length > 0 || missingCols.length > 0) {
-    console.log(`\n发现新的云开发依赖，建议运行：`)
+  if (scriptsSetup.length === 0 || !allDone) {
+    console.log(`\n有 setup 脚本待执行，建议运行：`)
     console.log(`  mp-skills setup`)
   }
 }

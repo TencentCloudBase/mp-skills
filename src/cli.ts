@@ -200,15 +200,11 @@ program
       await renderCommand(opts)
     }),
   )
-// ── setup — 一站式环境搭建 ─────────────────────────
+// ── setup — 脚本编排器 ────────────────────────────
 program
   .command('setup [project-dir]')
-  .description('一站式环境搭建：聚合云函数、创建数据库集合、检查服务')
-  .option('-f, --cloud-functions', '仅处理云函数')
-  .option('-d, --database', '仅处理数据库')
-  .option('-s, --services', '仅检查服务')
+  .description('收集并执行各 Skill 声明的 setup 脚本')
   .option('--dry-run', '预览，不实际执行')
-  .option('--env-id <id>', '云开发环境 ID（未指定则从项目配置读取）')
   .action(
     track('setup', async (dir, opts) => {
       const { setupCommand } = await import('./commands/setup.js')
@@ -261,6 +257,20 @@ program
     const { evalCommand } = await import('./commands/eval.js')
     await evalCommand(opts.project, opts)
   })
+
+// ── plugin — 内置插件入口 ─────────────────────────────
+program
+  .command('plugin')
+  .description('运行内置插件（当前仅支持 cloudbase）')
+  .requiredOption('-n, --name <name>', '插件名')
+  .allowUnknownOption(true)
+  .argument('[args...]')
+  .action(
+    track('plugin', async (args, opts) => {
+      const { pluginCommand } = await import('./commands/plugin.js')
+      await pluginCommand(process.cwd(), { name: opts.name, args })
+    }),
+  )
 
 // Parse args
 program.parse()

@@ -1,438 +1,275 @@
 // ── setup 命令 ──
-// 一站式环境搭建：聚合云函数 + 数据库集合 + 服务检查
+// 脚本编排器：收集 mp-skills.json 中的 scripts.setup，确认后串行执行。
+// 不认知任何平台，CloudBase 逻辑已移入 plugin 子命令。
 
-import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { execSync, spawnSync } from 'node:child_process'
-import CloudBase from '@cloudbase/manager-node'
-import { scanCloudFunctions, aggregateCloudFunctions } from '../lib/cloudfunction-scanner.js'
-import { writeProjectCloudbaserc, writeSharedConfig } from '../lib/cloudbase-config.js'
-import { resolveCloudfunctionRoot, ensureCloudfunctionRoot } from '../lib/utils.js'
-import { scanCollections, generateCollectionGuides } from '../lib/database-scanner.js'
-import { readDeployedState, updateDeployedState } from '../lib/lock-file.js'
-import { ensureLogin, resolveCloudbaseBin } from '../lib/cloudbase.js'
-import { fuzzySelect } from '../lib/selector.js'
-import type { DeployedState } from '../types.js'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { resolve, join } from 'node:path'
+import { spawn } from 'node:child_process'
+import type { MpSkillsJson, SetupRecord } from '../types.js'
 
 interface SetupOptions {
-  cloudFunctions?: boolean
-  database?: boolean
-  services?: boolean
   dryRun?: boolean
-  envId?: string
+}
+
+interface SetupTask {
+  skill: string
+  script: string
+  description: string
+  cwd: string
 }
 
 export async function setupCommand(projectDir: string, opts: SetupOptions): Promise<void> {
   const projectPath = resolve(projectDir)
-  const runAll = !opts.cloudFunctions && !opts.database && !opts.services
+  const tasks = collectSetupTasks(projectPath)
 
-  console.log('mp-skills setup')
+  if (tasks.length === 0) {
+    console.log('')
+    console.log('  ═══════════════════════════════════════════')
+    console.log('   未找到任何 setup 脚本，无需执行')
+    console.log('  ═══════════════════════════════════════════')
+    console.log('')
+    return
+  }
+
+  const prevRecords = readSetupRecords(projectPath)
+
+  // 过滤已成功的脚本（跳过，不展示）
+  const pending = tasks.filter((t) => !prevRecords.find((r) => r.skill === t.skill && r.script === t.script && r.status === 'done'))
+
+  if (pending.length === 0) {
+    console.log('')
+    console.log('  ═══════════════════════════════════════════')
+    console.log('   所有脚本上次已成功执行，跳过')
+    console.log('  ═══════════════════════════════════════════')
+    console.log('')
+    return
+  }
+
+  if (opts.dryRun) {
+    console.log('')
+    console.log('  以下脚本将被执行（dry-run，不实际运行）：')
+    console.log('')
+    for (const t of pending) {
+      console.log(`  ${t.skill}`)
+      console.log(`    ${t.script}`)
+      if (t.description) console.log(`    ${t.description}`)
+      console.log('')
+    }
+    return
+  }
+
+  // 展示确认清单
+  console.log('')
+  console.log('  ═══════════════════════════════════════════')
+  console.log('  扫描到以下 setup 脚本：')
+  console.log('')
+  for (const t of pending) {
+    console.log(`  ${t.skill}`)
+    console.log(`    ${t.script}`)
+    if (t.description) console.log(`    ${t.description}`)
+    console.log('')
+  }
+  console.log(`  即将依次执行以上 ${pending.length} 个脚本。`)
+  console.log('  ═══════════════════════════════════════════')
   console.log('')
 
-  // ── 第 0 步：选择云开发环境 ──
-  let targetEnvId = opts.envId || readEnvIdFromProject(projectPath)
-  if (!targetEnvId || targetEnvId.includes('{{env.')) {
-    targetEnvId = await interactiveEnvSelect(projectPath)
-  }
-  if (!targetEnvId) {
-    console.log('  [ERR] 未选择云开发环境')
-    console.log('     可通过 --env-id 参数指定，或设置 ENV_ID 环境变量')
-    console.log('')
-    return
-  }
-
-  // 写入共享配置 config.js（中间件读取）和 cloudbaserc.json
-  writeSharedConfig(projectPath, targetEnvId)
-  console.log('')
-
-  if (runAll || opts.cloudFunctions) {
-    const steps = runAll ? '1/3' : '1/1'
-    await setupCloudFunctions(projectPath, targetEnvId, opts.dryRun || false, steps)
-  }
-
-  if (runAll || opts.database) {
-    const steps = runAll ? '2/3' : '1/1'
-    await setupDatabase(projectPath, targetEnvId, opts.dryRun || false, steps)
-  }
-
-  if (runAll || opts.services) {
-    const steps = runAll ? '3/3' : '1/1'
-    await setupServices(projectPath, targetEnvId, steps)
-  }
-
-  console.log('')
-}
-
-async function setupCloudFunctions(projectPath: string, envId: string, dryRun: boolean, step: string): Promise<void> {
-  console.log(`[${step}] 云函数`)
-  console.log('─'.repeat(40))
-
-  const funcs = scanCloudFunctions(projectPath)
-
-  if (funcs.length === 0) {
-    console.log('  （未发现云函数）')
-    console.log('')
-    return
-  }
-
-  for (const f of funcs) {
-    const badge = f.type === 'http' ? ' [HTTP]' : ''
-    console.log(`  ${f.name}${badge}`)
-  }
-  console.log(`  共 ${funcs.length} 个云函数`)
-  console.log('')
-
-  const cfDest = resolveCloudfunctionRoot(projectPath) || 'cloudfunctions/'
-
-  if (dryRun) {
-    console.log(`  [dry-run] 将聚合到 ${cfDest}`)
-    console.log('')
-    return
-  }
-
-  // ── 交互选择待聚合云函数 ──
-  const selectItems = [
-    { value: '__all__', label: '全部云函数', description: `聚合全部 ${funcs.length} 个云函数` },
-    ...funcs.map((f) => ({
-      value: f.name,
-      label: `${f.name}${f.type === 'http' ? ' [HTTP]' : ''}`,
-      description: `Skill: ${f.skillName}  类型: ${f.type}`,
-    })),
-  ]
-
-  const selected = await fuzzySelect(selectItems, { multiSelect: true })
-  if (!selected) {
-    console.log('  已取消')
-    console.log('')
-    return
-  }
-
-  const selectedNames = selected.split(',').filter(Boolean)
-  const toAggregate = selectedNames.includes('__all__') ? funcs : funcs.filter((f) => selectedNames.includes(f.name))
-
-  if (toAggregate.length === 0) {
-    console.log('  未选择任何云函数')
-    console.log('')
-    return
-  }
-
-  console.log(`  即将聚合 ${toAggregate.length} 个云函数到 ${cfDest}`)
-
-  const aggregated = aggregateCloudFunctions(projectPath, toAggregate)
-  if (aggregated.length > 0) {
-    console.log(`  已聚合 ${aggregated.length} 个云函数到 ${cfDest}`)
-    if (ensureCloudfunctionRoot(projectPath)) {
-      console.log(`  已添加 cloudfunctionRoot 配置`)
-    }
-  }
-
-  const mergedPath = writeProjectCloudbaserc(projectPath, false, envId)
-  if (mergedPath) {
-    console.log(`  已生成项目级 cloudbaserc.json → ${mergedPath}`)
-  } else if (toAggregate.length > 0) {
-    console.log(`  [WARN]  未生成 cloudbaserc.json（缺少 cloudbaserc.json 配置）`)
-  }
-
-  const events = toAggregate.filter((f) => f.type === 'event')
-  const https = toAggregate.filter((f) => f.type === 'http')
-
-  if (events.length > 0) {
-    console.log('')
-    console.log(`  Event 云函数（${events.length} 个）：`)
-    console.log(`    目录：${cfDest}`)
-    for (const f of events) {
-      console.log(`      ${f.name}/`)
-    }
-    console.log('')
-    console.log('    方式一：微信开发者工具')
-    for (const f of events) {
-      console.log(`            ${cfDest}${f.name}/ 右键 → 创建并部署（云端安装依赖）`)
-    }
-    console.log('    方式二：CloudBase CLI：')
-    for (const f of events) {
-      console.log(`      tcb fn deploy ${f.name} --yes`)
-    }
-    console.log('    方式三：CloudBase MCP（manageFunctions）')
-  }
-
-  if (https.length > 0) {
-    console.log('')
-    console.log(`  HTTP 云函数（${https.length} 个）：无法在开发者工具中部署`)
-    console.log('    部署命令：')
-    for (const f of https) {
-      console.log(`      tcb fn deploy ${f.name} --httpFn --yes`)
-    }
-    console.log('')
-    console.log('    部署后需开启 HTTP 访问服务：')
-    console.log('      https://tcb.cloud.tencent.com/dev#/gateway')
-  }
-
-  updateDeployedIfChanged(projectPath, { cloudfunctions: toAggregate.map((f) => f.name) })
-  console.log('')
-}
-
-async function setupDatabase(projectPath: string, envId: string, dryRun: boolean, step: string): Promise<void> {
-  console.log(`[${step}] 数据库`)
-  console.log('─'.repeat(40))
-
-  const all = scanCollections(projectPath)
-
-  if (all.length === 0) {
-    console.log('  （未发现数据库集合声明）')
-    console.log('')
-    return
-  }
-
-  const guides = generateCollectionGuides(all)
-  for (const line of guides) {
-    console.log(`  ${line}`)
-  }
-
-  if (dryRun) {
-    console.log(`  [dry-run] 将创建 ${all.length} 个集合`)
-    console.log('')
-    return
-  }
-
-  // ── 确保登录 ──
-  const cred = await ensureLogin()
-  if (!cred) {
-    console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
-    console.log('')
-    return
-  }
-
-  // ── 交互选择待创建集合 ──
-  const selectItems = [
-    { value: '__all__', label: '全部集合', description: `创建全部 ${all.length} 个集合` },
-    ...all.map((c) => ({
-      value: c.name,
-      label: c.name,
-      description: `${c.description || '-'}（${c.skills.join(', ')}）`,
-    })),
-  ]
-
-  const selected = await fuzzySelect(selectItems, { multiSelect: true })
-  if (!selected) {
+  const confirmed = await askConfirm('确认执行？(Y/n) ')
+  if (!confirmed) {
     console.log('  已取消')
     return
   }
 
-  const selectedNames = selected.split(',').filter(Boolean)
-  const toCreate = selectedNames.includes('__all__') ? all : all.filter((c) => selectedNames.includes(c.name))
-
-  if (toCreate.length === 0) {
-    console.log('  未选择任何集合')
-    return
+  // 串行执行
+  const results: SetupRecord[] = []
+  for (const t of pending) {
+    console.log('')
+    console.log(`  ── ${t.skill} ──`)
+    const result = await executeScript(t)
+    results.push(result)
+    if (result.status === 'done') {
+      console.log(`  [OK]  完成`)
+    } else {
+      console.log(`  [ERR] 退出码 ${result.errorCode ?? '?'} — ${t.script}`)
+    }
   }
 
-  console.log(`  即将创建 ${toCreate.length} 个集合`)
+  // 汇总
+  const success = results.filter((r) => r.status === 'done').length
+  const failed = results.filter((r) => r.status === 'failed').length
+  console.log('')
+  console.log('  ==== 结果 ====')
+  console.log(`  成功: ${success}  失败: ${failed}  跳过: ${results.length - success - failed}`)
+  console.log('')
 
-  const app = CloudBase.init({
-    secretId: cred.tmpSecretId,
-    secretKey: cred.tmpSecretKey,
-    token: cred.tmpToken,
-    envId: envId,
-    region: 'ap-shanghai',
-  })
+  // 写入锁文件
+  writeSetupRecords(projectPath, results)
 
-  let created = 0
-  let errorCount = 0
+  if (failed > 0) {
+    console.log('  [ERR] 部分脚本执行失败，请检查后重试。')
+  }
+}
 
-  for (const col of toCreate) {
-    console.log(`  ${col.name}...`)
+// ── 扫描 ──
 
-    // 1. 创建集合
-    try {
-      await app.database.createCollectionIfNotExists(col.name)
-      created++
-      console.log(`    * 集合已就绪`)
-    } catch (err) {
-      const msg = (err as Error).message || String(err)
-      if (msg.includes('already exists') || msg.includes('exist')) {
-        console.log(`    * 集合已存在`)
-      } else {
-        console.log(`    [ERR] 创建失败：${msg}`)
-        errorCount++
-        continue
-      }
+function readMpSkillsJson(filePath: string): MpSkillsJson | null {
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8'))
+  } catch {
+    return null
+  }
+}
+
+function resolveSkillsDir(projectPath: string): string | null {
+  // 尝试小程序 root
+  try {
+    const projectConfigPath = join(projectPath, 'project.config.json')
+    if (existsSync(projectConfigPath)) {
+      const config = JSON.parse(readFileSync(projectConfigPath, 'utf-8'))
+      const mpRoot = config.miniprogramRoot || '.'
+      const skillsDir = join(projectPath, mpRoot.replace(/\/$/, ''), 'skills')
+      if (existsSync(skillsDir)) return skillsDir
     }
+  } catch {
+    // 忽略
+  }
+  // 回退到 projectPath/skills
+  const fallback = join(projectPath, 'skills')
+  return existsSync(fallback) ? fallback : null
+}
 
-    // 2. 创建索引
-    if (col.indexes.length > 0) {
-      try {
-        const createIndexes = col.indexes.map((idx, i) => ({
-          IndexName: `idx_${Array.isArray(idx.field) ? idx.field.join('_') : idx.field}_${i}`,
-          MgoKeySchema: {
-            MgoIndexKeys: (Array.isArray(idx.field) ? idx.field : [idx.field]).map((f) => ({
-              Name: f,
-              Direction: '1',
-            })),
-            MgoIsUnique: idx.unique || false,
-          },
-        }))
+function collectSetupTasks(projectPath: string): SetupTask[] {
+  const tasks: SetupTask[] = []
 
-        await app.database.updateCollection(col.name, { CreateIndexes: createIndexes })
-        console.log(`    * 索引已创建`)
-      } catch (err) {
-        const msg = (err as Error).message || String(err)
-        console.log(`    [WARN]  索引创建：${msg}`)
-      }
-    }
-
-    // 3. 安全规则
-    if (col.aclTag) {
-      try {
-        await app.permission.modifyResourcePermission({
-          resourceType: 'collection',
-          resource: col.name,
-          permission: col.aclTag as any,
+  // 1. 扫描 skills/*/mp-skills.json
+  const skillsDir = resolveSkillsDir(projectPath)
+  if (skillsDir) {
+    const entries = readdirSync(skillsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) continue
+      const configPath = join(skillsDir, entry.name, 'mp-skills.json')
+      if (!existsSync(configPath)) continue
+      const config = readMpSkillsJson(configPath)
+      if (config?.scripts?.setup) {
+        tasks.push({
+          skill: entry.name,
+          script: config.scripts.setup,
+          description: config.description || '',
+          cwd: join(skillsDir, entry.name),
         })
-        console.log(`    * 安全规则：${col.aclTag}`)
-      } catch (err) {
-        const msg = (err as Error).message || String(err)
-        console.log(`    [WARN]  安全规则配置：${msg}`)
       }
     }
   }
 
-  console.log('')
-  if (errorCount > 0) {
-    console.log(`  [WARN]  ${errorCount} 个集合创建失败，请查看上面错误信息`)
-  } else {
-    console.log(`  [OK] 数据库初始化完成（${created}/${toCreate.length}）`)
+  // 2. 扫描项目级 mp-skills.json
+  const projectConfigPath = join(projectPath, 'mp-skills.json')
+  if (existsSync(projectConfigPath)) {
+    const config = readMpSkillsJson(projectConfigPath)
+    if (config?.scripts?.setup) {
+      tasks.push({
+        skill: '__project__',
+        script: config.scripts.setup,
+        description: config.description || '',
+        cwd: projectPath,
+      })
+    }
   }
 
-  updateDeployedIfChanged(projectPath, { collections: all.map((c) => c.name) })
-  console.log('')
+  // 按 skill 名排序，保证输出稳定
+  tasks.sort((a, b) => a.skill.localeCompare(b.skill))
+  return tasks
 }
 
-async function setupServices(projectPath: string, _envId: string, step: string): Promise<void> {
-  console.log(`[${step}] 服务`)
-  console.log('─'.repeat(40))
+// ── 执行 ──
 
-  const funcs = scanCloudFunctions(projectPath)
-  const hasHttpFunc = funcs.some((f) => f.type === 'http')
-  const hasAISkill = ['text-gen-skill', 'image-gen-skill', 'image-edit-skill'].some((s) =>
-    existsSync(`${projectPath}/skills/${s}`),
+function executeScript(task: SetupTask): Promise<SetupRecord> {
+  return new Promise((resolveRecord) => {
+    const startTime = new Date().toISOString()
+
+    const child = spawn(task.script, [], {
+      cwd: task.cwd,
+      stdio: ['inherit', 'inherit', 'pipe'],
+      shell: true,
+      timeout: 300_000,
+      env: {
+        ...process.env,
+        PROJECT_DIR: resolve(task.cwd, '..', '..', '..'),
+        SKILL_DIR: task.cwd,
+      },
+    })
+
+    let stderr = ''
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString()
+      process.stderr.write(chunk)
+    })
+
+    child.on('close', (code) => {
+      resolveRecord({
+        script: task.script,
+        skill: task.skill,
+        status: code === 0 ? 'done' : 'failed',
+        executedAt: startTime,
+        errorCode: code ?? undefined,
+      })
+    })
+
+    child.on('error', () => {
+      resolveRecord({
+        script: task.script,
+        skill: task.skill,
+        status: 'failed',
+        executedAt: startTime,
+        errorCode: -1,
+      })
+    })
+  })
+}
+
+// ── 确认 ──
+
+function askConfirm(prompt: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    process.stdout.write(prompt)
+    process.stdin.once('data', (data) => {
+      const input = data.toString().trim().toLowerCase()
+      resolve(input === '' || input === 'y' || input === 'yes')
+    })
+  })
+}
+
+// ── 锁文件记录 ──
+
+interface LockData {
+  version: number
+  skills: unknown[]
+  scriptsSetup?: SetupRecord[]
+}
+
+function readSetupRecords(projectPath: string): SetupRecord[] {
+  const lockPath = join(projectPath, 'skills-lock.json')
+  if (!existsSync(lockPath)) return []
+  try {
+    const data: LockData = JSON.parse(readFileSync(lockPath, 'utf-8'))
+    return data.scriptsSetup || []
+  } catch {
+    return []
+  }
+}
+
+function writeSetupRecords(projectPath: string, records: SetupRecord[]): void {
+  const lockPath = join(projectPath, 'skills-lock.json')
+  let lock: LockData
+  try {
+    lock = JSON.parse(readFileSync(lockPath, 'utf-8'))
+  } catch {
+    lock = { version: 2, skills: [] }
+  }
+
+  // 合并：新记录覆盖旧记录（同名 skill+script）
+  const existing = (lock.scriptsSetup || []).filter(
+    (r) => !records.some((nr) => nr.skill === r.skill && nr.script === r.script),
   )
+  lock.scriptsSetup = [...existing, ...records]
 
-  let found = false
-
-  if (hasHttpFunc) {
-    console.log('  HTTP 访问服务')
-    console.log('    涉及：pay-common')
-    console.log('    https://tcb.cloud.tencent.com/dev#/gateway')
-    found = true
-  }
-
-  if (hasAISkill) {
-    console.log('  AI 模型')
-    console.log('    涉及：text-gen-skill, image-gen-skill, image-edit-skill')
-    console.log('    请在控制台开启所需模型：https://tcb.cloud.tencent.com/dev#/ai')
-    console.log('    需购买 Token 资源包（hy3-preview 有免费额度）')
-    found = true
-  }
-
-  if (!found) {
-    console.log('  （无需额外配置）')
-  }
-
-  const services: string[] = []
-  if (hasHttpFunc) services.push('http-service')
-  if (hasAISkill) services.push('ai-model')
-
-  if (services.length > 0) {
-    updateDeployedIfChanged(projectPath, { services })
-  }
-
-  console.log('')
-}
-
-function updateDeployedIfChanged(projectPath: string, patch: Partial<DeployedState>): void {
-  const current = readDeployedState(projectPath) || { cloudfunctions: [], collections: [], services: [] }
-  const merged: DeployedState = {
-    cloudfunctions: patch.cloudfunctions || current.cloudfunctions,
-    collections: patch.collections || current.collections,
-    services: patch.services || current.services,
-  }
-  updateDeployedState(projectPath, merged)
-}
-
-/**
- * 从项目级 cloudbaserc.json 或 project.config.json 尝试读取环境 ID
- */
-function readEnvIdFromProject(projectPath: string): string | null {
-  // 尝试项目级 cloudbaserc.json
-  const paths = [resolve(projectPath, 'cloudbaserc.json'), resolve(projectPath, 'miniprogram', 'cloudbaserc.json')]
-  for (const p of paths) {
-    try {
-      const json = JSON.parse(readFileSync(p, 'utf-8'))
-      if (json.envId) {
-        // 解析 {{env.XXX}} 插值
-        const resolved = String(json.envId).replace(
-          /\{\{env\.(\w+)\}\}/g,
-          (_, name) => process.env[name] || `{{env.${name}}}`,
-        )
-        if (resolved !== json.envId && resolved.includes('{{env.')) {
-          console.warn('  [WARN]  环境变量 ENV_ID 未设置，保留插值。可通过 --env-id 参数指定')
-        }
-        return resolved
-      }
-    } catch {}
-  }
-  return null
-}
-
-/**
- * 交互式选择云开发环境
- * 调用 tcb env list --json 获取环境列表，用 fuzzySelect 选择
- */
-async function interactiveEnvSelect(projectPath: string): Promise<string | null> {
-  // 确保登录
-  const cred = await ensureLogin()
-  if (!cred) {
-    console.log('  [ERR] 登录失败，请执行 tcb login 手动登录')
-    return null
-  }
-
-  const bin = resolveCloudbaseBin()
-  if (!bin) {
-    console.log('  [ERR] 未找到 cloudbase CLI，无法获取环境列表')
-    return null
-  }
-
-  console.log('   获取环境列表...')
-
-  let raw: string
-  try {
-    raw = spawnSync(bin, ['env', 'list', '--json'], { encoding: 'utf-8', timeout: 15000 }).stdout || ''
-  } catch {
-    console.log('  [ERR] 获取环境列表失败，请通过 --env-id 参数指定')
-    return null
-  }
-
-  let data: { envId: string; status: string; createTime: string }[]
-  try {
-    data = JSON.parse(raw).data || []
-  } catch {
-    console.log('  [ERR] 解析环境列表失败')
-    return null
-  }
-
-  const items = data
-    .filter((e) => e.status === 'NORMAL')
-    .map((e) => ({
-      value: e.envId,
-      label: e.envId,
-      description: `状态: ${e.status}  创建: ${e.createTime}`,
-    }))
-
-  if (items.length === 0) {
-    console.log('  [ERR] 未找到可用的云开发环境')
-    return null
-  }
-
-  const selected = await fuzzySelect(items, { multiSelect: false })
-  return selected || null
+  writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n')
 }

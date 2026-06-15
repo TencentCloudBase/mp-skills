@@ -104,7 +104,7 @@ export async function doctorCommand(projectDir: string): Promise<void> {
 
   const issues = missingFuncs.length + missingCols.length
   if (issues > 0) {
-    console.log(`发现 ${issues} 个问题，运行 npx mp-skills setup 修复。`)
+    console.log(`发现 ${issues} 个问题，运行 mp-skills setup 修复。`)
   } else {
     console.log('一切正常。')
   }

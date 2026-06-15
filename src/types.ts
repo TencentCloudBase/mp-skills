@@ -109,3 +109,27 @@ export interface SkillInfo {
   description?: string
   path: string
 }
+
+// ── mp-skills.json ──
+
+export interface MpSkillsJson {
+  scripts?: {
+    /** 安装后执行的 setup 命令 */
+    setup?: string
+    [key: string]: string | undefined
+  }
+  /** 脚本用途描述，确认时展示 */
+  description?: string
+}
+
+// ── 脚本执行记录（skills-lock.json 中的 scriptsSetup 字段） ──
+
+export interface SetupRecord {
+  /** 执行的命令字符串 */
+  script: string
+  /** 脚本所属 Skill 名，项目级脚本记为 "__project__" */
+  skill: string
+  status: 'done' | 'skipped' | 'failed'
+  executedAt: string
+  errorCode?: number
+}

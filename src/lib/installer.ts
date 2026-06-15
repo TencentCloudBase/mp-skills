@@ -86,8 +86,8 @@ export function showSetupHint(projectName?: string): void {
   if (projectName) {
     console.log(`    cd ${projectName}`)
   }
-  console.log('  * 下一步：执行 npx mp-skills setup')
-  console.log('     聚合云函数、生成项目级 cloudbaserc.json、初始化数据库')
+  console.log('  * 下一步：运行 mp-skills setup')
+  console.log('     将自动执行各 Skill 声明的 setup 脚本')
   console.log('  ═══════════════════════════════════════════')
 }
 
