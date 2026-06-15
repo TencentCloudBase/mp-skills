@@ -235,7 +235,9 @@ export async function addCommand(source: string, opts: AddOptions): Promise<void
 function promptSetupIfNeeded(projectPath: string): void {
   const lockPath = join(projectPath, 'skills-lock.json')
   let lock: { scriptsSetup?: unknown[] } = {}
-  try { lock = JSON.parse(readFileSync(lockPath, 'utf-8')) } catch {}
+  try {
+    lock = JSON.parse(readFileSync(lockPath, 'utf-8'))
+  } catch {}
 
   const scriptsSetup = lock.scriptsSetup || []
   const allDone = scriptsSetup.every((r: any) => r.status === 'done')

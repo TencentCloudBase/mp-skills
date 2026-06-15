@@ -90,7 +90,11 @@ async function cloudbaseSetup(projectPath: string, _args: string[]): Promise<voi
   await runServicesCheck(projectPath)
 }
 
-async function runCloudFunctions(projectPath: string, envId: string, funcs: Awaited<ReturnType<typeof scanCloudFunctions>>): Promise<void> {
+async function runCloudFunctions(
+  projectPath: string,
+  envId: string,
+  funcs: Awaited<ReturnType<typeof scanCloudFunctions>>,
+): Promise<void> {
   console.log(`[${CLOUD_STEPS[0]}] 云函数`)
   console.log('─'.repeat(40))
 
@@ -394,7 +398,6 @@ function readEnvIdFromProject(projectPath: string): string | null {
   }
   return null
 }
-
 
 async function interactiveEnvSelect(projectPath: string): Promise<string | null> {
   const cred = await ensureLogin()

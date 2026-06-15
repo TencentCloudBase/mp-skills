@@ -39,7 +39,9 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   const prevRecords = readSetupRecords(projectPath)
 
   // 过滤已成功的脚本
-  const pending = tasks.filter((t) => !prevRecords.find((r) => r.skill === t.skill && r.script === t.script && r.status === 'done'))
+  const pending = tasks.filter(
+    (t) => !prevRecords.find((r) => r.skill === t.skill && r.script === t.script && r.status === 'done'),
+  )
 
   if (pending.length === 0) {
     if (opts.json) {
@@ -57,7 +59,11 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   // dry-run 模式
   if (opts.dryRun) {
     if (opts.json) {
-      console.log(JSON.stringify({ tasks: pending.map((t) => ({ skill: t.skill, script: t.script, description: t.description })) }))
+      console.log(
+        JSON.stringify({
+          tasks: pending.map((t) => ({ skill: t.skill, script: t.script, description: t.description })),
+        }),
+      )
       return
     }
     console.log('')
@@ -89,7 +95,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
     console.log('')
   }
 
-  const confirmed = opts.json || await askConfirm('确认执行？(Y/n) ')
+  const confirmed = opts.json || (await askConfirm('确认执行？(Y/n) '))
   if (!confirmed) {
     if (opts.json) {
       console.log(JSON.stringify({ cancelled: true }))
