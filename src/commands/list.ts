@@ -8,27 +8,36 @@ import { resolveMiniprogramRoot } from '../lib/utils.js'
 interface ListOptions {
   remote?: boolean
   all?: boolean
+  json?: boolean
 }
 
 export async function listCommand(opts: ListOptions): Promise<void> {
   const projectPath = resolve('.')
   const mpRoot = resolveMiniprogramRoot(projectPath)
+  const skillsDir = mpRoot ? join(mpRoot, 'skills') : null
+
+  const localSkills: { name: string; path: string }[] = []
+  if (skillsDir && existsSync(skillsDir)) {
+    const entries = readdirSync(skillsDir, { withFileTypes: true }).filter(
+      (e: Dirent) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'mcp.json')),
+    )
+    for (const entry of entries) {
+      localSkills.push({ name: entry.name, path: `skills/${entry.name}` })
+    }
+  }
+
+  if (opts.json) {
+    console.log(JSON.stringify({ installed: localSkills }))
+    return
+  }
 
   if (!opts.remote || opts.all) {
     console.log('已安装的 Skill：')
-    const skillsDir = mpRoot ? join(mpRoot, 'skills') : null
-    if (skillsDir && existsSync(skillsDir)) {
-      const entries = readdirSync(skillsDir, { withFileTypes: true }).filter(
-        (e: Dirent) => e.isDirectory() && existsSync(join(skillsDir, e.name, 'mcp.json')),
-      )
-      if (entries.length === 0) {
-        console.log('  （无）')
-      }
-      for (const entry of entries) {
-        console.log(`  ${entry.name}`)
-      }
-    } else {
+    if (localSkills.length === 0) {
       console.log('  （无）')
+    }
+    for (const s of localSkills) {
+      console.log(`  ${s.name}`)
     }
   }
 

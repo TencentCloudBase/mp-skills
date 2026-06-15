@@ -79,6 +79,7 @@ program
   .description('列出已安装的 Skill')
   .option('-r, --remote', '列出远程可用的 Skill')
   .option('--all', '同时列出已安装和远程')
+  .option('--json', 'JSON 格式输出')
   .action(
     track('list', async (opts) => {
       const { listCommand } = await import('./commands/list.js')
@@ -90,10 +91,11 @@ program
 program
   .command('find [keyword]')
   .description('搜索远程仓库中的 Skill')
+  .option('--json', 'JSON 格式输出')
   .action(
-    track('find', async (keyword) => {
+    track('find', async (keyword, opts) => {
       const { findCommand } = await import('./commands/find.js')
-      await findCommand(keyword || '')
+      await findCommand(keyword || '', opts)
     }),
   )
 
@@ -205,6 +207,7 @@ program
   .command('setup [project-dir]')
   .description('收集并执行各 Skill 声明的 setup 脚本')
   .option('--dry-run', '预览，不实际执行')
+  .option('--json', 'JSON 格式输出')
   .action(
     track('setup', async (dir, opts) => {
       const { setupCommand } = await import('./commands/setup.js')
@@ -265,12 +268,27 @@ program
   .requiredOption('-n, --name <name>', '插件名')
   .allowUnknownOption(true)
   .argument('[args...]')
-  .action(
-    track('plugin', async (args, opts) => {
+  .action(async (args, opts) => {
+    showLogo()
+    const start = Date.now()
+    try {
       const { pluginCommand } = await import('./commands/plugin.js')
       await pluginCommand(process.cwd(), { name: opts.name, args })
-    }),
-  )
+      trackCommand({
+        command: `plugin:${opts.name}:${args[0] || 'help'}`,
+        success: true,
+        duration: Date.now() - start,
+      }).catch(() => {})
+    } catch (err) {
+      trackCommand({
+        command: `plugin:${opts.name}:${args[0] || 'help'}`,
+        success: false,
+        error: (err as Error).message,
+        duration: Date.now() - start,
+      }).catch(() => {})
+      throw err
+    }
+  })
 
 // Parse args
 program.parse()

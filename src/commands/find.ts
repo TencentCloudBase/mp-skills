@@ -91,10 +91,7 @@ function matchSkill(skill: SkillEntry, query: string): boolean {
 
 // ── 非交互模式 ──
 
-async function staticSearch(keyword: string, registry: Registry, source: string): Promise<void> {
-  console.log(`搜索 Skill${keyword ? `："${keyword}"` : ''}`)
-  console.log('')
-
+async function staticSearch(keyword: string, registry: Registry, source: string, json: boolean): Promise<void> {
   const allSkills = await fetchAllSkills(registry)
   await fetchDescriptions(allSkills, registry, source)
 
@@ -111,6 +108,11 @@ async function staticSearch(keyword: string, registry: Registry, source: string)
     const bStarts = bName.startsWith(keywordLower) ? 0 : 1
     return aStarts - bStarts
   })
+
+  if (json) {
+    console.log(JSON.stringify({ skills: filtered, total: filtered.length }))
+    return
+  }
 
   if (filtered.length === 0) {
     console.log(`  ${pc.dim('（未找到匹配的 Skill）')}`)
@@ -328,15 +330,15 @@ function createInlineSpinner() {
 
 // ── 入口 ──
 
-export async function findCommand(keyword: string): Promise<void> {
+export async function findCommand(keyword: string, opts: { json?: boolean } = {}): Promise<void> {
   const { registry, source } = await loadRegistry()
 
   if (source !== 'local') {
     console.log(`  ${pc.dim(`注册表来源：${source}`)}`)
   }
 
-  if (keyword || !process.stdin.isTTY) {
-    return staticSearch(keyword, registry, source)
+  if (opts.json || keyword || !process.stdin.isTTY) {
+    return staticSearch(keyword, registry, source, opts.json || false)
   }
   return interactiveSearch(registry, source)
 }

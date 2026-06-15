@@ -9,6 +9,7 @@ import type { MpSkillsJson, SetupRecord } from '../types.js'
 
 interface SetupOptions {
   dryRun?: boolean
+  json?: boolean
 }
 
 interface SetupTask {
@@ -23,6 +24,10 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   const tasks = collectSetupTasks(projectPath)
 
   if (tasks.length === 0) {
+    if (opts.json) {
+      console.log(JSON.stringify({ tasks: [], message: '未找到任何 setup 脚本' }))
+      return
+    }
     console.log('')
     console.log('  ═══════════════════════════════════════════')
     console.log('   未找到任何 setup 脚本，无需执行')
@@ -33,10 +38,14 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
 
   const prevRecords = readSetupRecords(projectPath)
 
-  // 过滤已成功的脚本（跳过，不展示）
+  // 过滤已成功的脚本
   const pending = tasks.filter((t) => !prevRecords.find((r) => r.skill === t.skill && r.script === t.script && r.status === 'done'))
 
   if (pending.length === 0) {
+    if (opts.json) {
+      console.log(JSON.stringify({ tasks: [], message: '所有脚本上次已成功执行，跳过' }))
+      return
+    }
     console.log('')
     console.log('  ═══════════════════════════════════════════')
     console.log('   所有脚本上次已成功执行，跳过')
@@ -45,7 +54,12 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
     return
   }
 
+  // dry-run 模式
   if (opts.dryRun) {
+    if (opts.json) {
+      console.log(JSON.stringify({ tasks: pending.map((t) => ({ skill: t.skill, script: t.script, description: t.description })) }))
+      return
+    }
     console.log('')
     console.log('  以下脚本将被执行（dry-run，不实际运行）：')
     console.log('')
@@ -58,23 +72,29 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
     return
   }
 
-  // 展示确认清单
-  console.log('')
-  console.log('  ═══════════════════════════════════════════')
-  console.log('  扫描到以下 setup 脚本：')
-  console.log('')
-  for (const t of pending) {
-    console.log(`  ${t.skill}`)
-    console.log(`    ${t.script}`)
-    if (t.description) console.log(`    ${t.description}`)
+  if (!opts.json) {
+    // 展示确认清单
+    console.log('')
+    console.log('  ═══════════════════════════════════════════')
+    console.log('  扫描到以下 setup 脚本：')
+    console.log('')
+    for (const t of pending) {
+      console.log(`  ${t.skill}`)
+      console.log(`    ${t.script}`)
+      if (t.description) console.log(`    ${t.description}`)
+      console.log('')
+    }
+    console.log(`  即将依次执行以上 ${pending.length} 个脚本。`)
+    console.log('  ═══════════════════════════════════════════')
     console.log('')
   }
-  console.log(`  即将依次执行以上 ${pending.length} 个脚本。`)
-  console.log('  ═══════════════════════════════════════════')
-  console.log('')
 
-  const confirmed = await askConfirm('确认执行？(Y/n) ')
+  const confirmed = opts.json || await askConfirm('确认执行？(Y/n) ')
   if (!confirmed) {
+    if (opts.json) {
+      console.log(JSON.stringify({ cancelled: true }))
+      return
+    }
     console.log('  已取消')
     return
   }
@@ -82,15 +102,27 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   // 串行执行
   const results: SetupRecord[] = []
   for (const t of pending) {
-    console.log('')
-    console.log(`  ── ${t.skill} ──`)
+    if (!opts.json) {
+      console.log('')
+      console.log(`  ── ${t.skill} ──`)
+    }
     const result = await executeScript(t)
     results.push(result)
-    if (result.status === 'done') {
-      console.log(`  [OK]  完成`)
-    } else {
-      console.log(`  [ERR] 退出码 ${result.errorCode ?? '?'} — ${t.script}`)
+    if (!opts.json) {
+      if (result.status === 'done') {
+        console.log(`  [OK]  完成`)
+      } else {
+        console.log(`  [ERR] 退出码 ${result.errorCode ?? '?'} — ${t.script}`)
+      }
     }
+  }
+
+  // 写入锁文件
+  writeSetupRecords(projectPath, results)
+
+  if (opts.json) {
+    console.log(JSON.stringify({ results }))
+    return
   }
 
   // 汇总
@@ -100,10 +132,6 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   console.log('  ==== 结果 ====')
   console.log(`  成功: ${success}  失败: ${failed}  跳过: ${results.length - success - failed}`)
   console.log('')
-
-  // 写入锁文件
-  writeSetupRecords(projectPath, results)
-
   if (failed > 0) {
     console.log('  [ERR] 部分脚本执行失败，请检查后重试。')
   }
