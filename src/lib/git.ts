@@ -1,10 +1,13 @@
 // ── Git 操作 ──
-// 使用 GitHub Trees API 列出远程 Skill（避免 clone），仅在安装时 clone
-// 支持 cnb.cool 镜像加速（mirrorUrl），优先走镜像，GitHub 回退
+// git clone 方式发现和安装 Skill，优先走 cnb.cool 镜像加速
+//
+// 原本有 GitHub Trees API 优先路径，但国内网络下 API 基本不可用，
+// 且每次都要等 5s 超时 + 输出吓人日志，现已全部走 git clone。
+// cloneRepo 内部已有 mirrorUrl（cnb.cool）→ repoUrl（GitHub）两级降级。
 
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, statSync, Dirent } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID, createHash } from 'node:crypto'
 import type { SourceInfo } from '../types.js'
@@ -27,9 +30,8 @@ function buildPathPattern(template: string): RegExp {
 const DEFAULT_PATH_PATTERN = 'skills/<name>/mcp.json'
 
 /**
- * 使用 GitHub Trees API 列出远程仓库中的 Skill。
- * 避免 git clone，轻量快速。
- * API 不可用时降级到 git clone（优先 mirrorUrl，再 GitHub）。
+ * 通过 git clone 列出远程仓库中的 Skill。
+ * 优先走 mirrorUrl（cnb.cool 国内加速），失败则回退到 repoUrl（GitHub）。
  *
  * @param info          仓库源信息（repoName, ref, repoUrl）
  * @param pathPattern   路径模式模板，如 `skills/<name>/mcp.json` 或 `<name>/SKILL.md`
@@ -41,67 +43,12 @@ export async function listRemoteSkills(
   pathPattern?: string,
   mirrorUrl?: string,
 ): Promise<Array<{ name: string; path: string }>> {
-  const { repoName, ref } = info
+  const { repoName } = info
   if (!repoName) throw new Error('GitHub repo name required')
 
   const pattern = pathPattern || DEFAULT_PATH_PATTERN
-
-  const token = getGitHubToken()
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'mp-skills-cli',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-
-  // GitHub Trees API 路径
-  const url = `https://api.github.com/repos/${repoName}/git/trees/${ref}?recursive=1`
-  try {
-    const response = await fetch(url, { headers })
-    if (response.ok) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await response.json()
-      return parseSkillTree(data.tree || [], pattern)
-    }
-  } catch {
-    // fall through to clone
-  }
-
-  console.log('  GitHub API 不可用，降级到 git clone...')
-  return listRemoteSkillsFallback(info, pattern, mirrorUrl)
-}
-
-/** 从 GitHub Trees API 的 tree 数组中解析 skill 列表 */
-function parseSkillTree(tree: Array<{ path: string }>, pattern: string): Array<{ name: string; path: string }> {
-  const regex = buildPathPattern(pattern)
-  const skills = new Map<string, string>() // name → dir path
-
-  for (const item of tree) {
-    const match = item.path.match(regex)
-    if (match) {
-      const name = match[1]!
-      if (name.startsWith('_')) continue // 过滤 _shared 等内部目录
-      const dir = dirname(item.path)
-      skills.set(name, dir)
-    }
-  }
-
-  return [...skills.entries()].map(([name, dir]) => ({ name, path: dir }))
-}
-
-/**
- * fallback: git clone 方式发现 skill
- * 优先用 mirrorUrl，失败则用 repoUrl（GitHub）
- */
-async function listRemoteSkillsFallback(
-  info: SourceInfo,
-  pathPattern?: string,
-  mirrorUrl?: string,
-): Promise<Array<{ name: string; path: string }>> {
-  const pattern = pathPattern || DEFAULT_PATH_PATTERN
   const tmpDir = cloneRepo(info.repoUrl!, info.ref, mirrorUrl)
   try {
-    // 从路径模式推断 marker 文件名和目录层级
-    // 示例 "skills/<name>/mcp.json" → marker="mcp.json", prefix dir 逻辑
     return scanLocalSkills(tmpDir, pattern)
   } finally {
     cleanupClone(tmpDir)
@@ -169,29 +116,6 @@ function getPrefixDir(template: string): string {
 }
 
 /**
- * 下载并读取远程文件的文本内容（从 GitHub raw）
- */
-export async function fetchRemoteFile(info: SourceInfo, filePath: string): Promise<string | null> {
-  const { repoName, ref } = info
-  if (!repoName) return null
-
-  const url = `https://raw.githubusercontent.com/${repoName}/${ref}/${filePath}`
-  const token = getGitHubToken()
-  const headers: Record<string, string> = {
-    'User-Agent': 'mp-skills-cli',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-
-  try {
-    const response = await fetch(url, { headers })
-    if (!response.ok) return null
-    return await response.text()
-  } catch {
-    return null
-  }
-}
-
-/**
  * 计算目录的哈希（用于版本追踪）
  */
 export function hashDirectory(dir: string): string {
@@ -213,22 +137,6 @@ export function hashDirectory(dir: string): string {
 
   if (existsSync(dir)) walk(dir)
   return hash.digest('hex').slice(0, 16)
-}
-
-/**
- * 获取 GitHub token（环境变量或 gh CLI）
- */
-function getGitHubToken(): string {
-  // 环境变量优先
-  if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN
-  if (process.env.GH_TOKEN) return process.env.GH_TOKEN
-
-  // 尝试 gh CLI
-  try {
-    return execSync('gh auth token', { stdio: 'pipe', timeout: 5000 }).toString().trim()
-  } catch {
-    return ''
-  }
 }
 
 /**
