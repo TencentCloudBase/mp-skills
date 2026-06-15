@@ -37,7 +37,7 @@ async function fetchAllSkills(registry: Registry): Promise<SkillEntry[]> {
       } else {
         const sourceInfo = { type: 'github' as const, original: repo.repo, repoName: repo.repo, ref: repo.ref }
         const { listRemoteSkills } = await import('../lib/git.js')
-        const skills = await listRemoteSkills(sourceInfo, repo.pathPattern)
+        const skills = await listRemoteSkills(sourceInfo, repo.pathPattern, repo.mirrorUrl)
         for (const s of skills) {
           results.push({ name: s.name, repo: repo.repo, description: '' })
         }
