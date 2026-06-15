@@ -69,6 +69,13 @@ export function installSkill(
   })
 
   console.log('   * 已记录版本')
+
+  // 5. 提示 README
+  const readmePath = join(targetDir, 'README.md')
+  if (existsSync(readmePath)) {
+    console.log(`   * 查看 ${displayPrefix}/${skillName}/README.md 了解功能详情`)
+  }
+
   _setupHintShown = false // 重置标记，让下次 install 重新提示
   return { skillName, targetDir }
 }
