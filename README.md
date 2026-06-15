@@ -15,28 +15,105 @@
   <img src="media/term-screenshot.svg" alt="mp-skills terminal screenshot" width="600">
 </p>
 
-让小程序快速接入微信 AI 开发模式——通过安装现成的业务 Skill（咖啡点单、医院挂号、出行打车等），快速为用户提供 AI 驱动的对话式服务体验。支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并提供评测校验工具保障质量。
+小程序 Skill 开发工具，支持快速创建新的 AI 小程序和 Skill，或将现有小程序改造为支持 AI 开发模式，并内置 AI 评测校验工具，保障 Skill 执行质量和稳定性。
 
-> [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html)
+> 什么是微信小程序 Skill？快速了解 ➡️ [微信 AI 开发模式官方文档](https://developers.weixin.qq.com/miniprogram/dev/ai/guide.html)
+
+特性
+- 📦 **Skill 发现与安装**：跨注册仓库搜索、安装、更新、移除远程 Skill（`find` / `add` / `update` / `remove`），支持 GitHub、URL、本地路径多源安装
+- 🏗️ **项目脚手架**：一键创建带 AI Skill 支持的小程序项目骨架（`new`），或在已有项目中快速生成 Skill 模板（`create`）
+- 🤖 **AI 辅助生成**：Agent 模式通过大模型分析项目自动生成符合规范的 Skill，支持增量迭代（`create --mode agent`）
+- 🔍 **Skill 静态校验**：对项目中 Skills 进行规范性检查，支持原子接口执行和组件渲染（`validate` / `execute` / `render`）
+- 🧪 **端到端质量评估**：集成官方评测工具（`wxa-skills-eval`），支持 official 和 agent 两种评估模式，自动生成测试用例并执行（`eval`）
+- 🔑 **多 LLM 提供方**：内置 DeepSeek、智谱 GLM、Kimi、MiniMax、CloudBase 网关等提供方预设，支持 BYOK（Bring Your Own Key）
+- 📋 **版本锁定与部署追踪**：`skills-lock.json` 追踪 Skill 版本 hash 和部署状态（云函数、数据库、服务）
 
 ---
 
+## 1. 安装
 
-## 快速开始
-### 发现并安装 Skill
+### 1.1 环境要求
+
+- **Node.js** ≥ 18（推荐 20+）
+- **npm** ≥ 9（或 pnpm / yarn）
+- **Git**（可选，`add` 命令从 GitHub 安装时需要）
+
+### 1.2 全局安装
+
+```bash
+npm install -g mp-skills
+```
+
+安装后即可在任意小程序项目目录使用：
+
+```bash
+mp-skills --help
+```
+
+### 1.3 通过 `npx` 免安装运行
+
+无需全局安装，直接用 `npx` 运行：
+
+```bash
+npx mp-skills --help
+npx mp-skills find
+npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
+```
+
+## 2. 快速开始
+
+### 2.1 从小程序模板开始
+
+从零创建一个自带 AI Skill 支持的小程序项目：
+
+```bash
+# 创建项目骨架（含 miniprogram/、云函数、示例 Skill 等）
+mp-skills new my-app
+cd my-app
+
+# 搜索并安装你需要的业务 Skill
+mp-skills find
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <skill-name>
+
+# 一键搭建云开发环境
+mp-skills setup
+```
+
+### 2.2 从现有小程序项目开始
+
+在已有小程序项目（含 `project.config.json` 的目录）中添加 AI Skill 能力：
+
+```bash
+# 进入小程序项目根目录
+cd ./my-existing-miniprogram
+
+# 搜索并安装业务 Skill
+mp-skills find
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <skill-name>
+
+# 或基于模板创建自定义 Skill
+mp-skills create my-skill
+
+# 搭建云开发环境（如有云开发依赖）
+mp-skills setup
+```
+
+安装后自动注入 `app.json`、`project.config.json` 等配置，无需手动修改。
+
+### 2.3 发现并安装 Skill
 
 ```bash
 # 1️⃣ 先搜索看看有哪些可用 Skill
-npx mp-skills find
+mp-skills find
 
 # 2️⃣ 交互式选择并安装 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills
+mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
 # 3️⃣ 或直接安装指定 Skill
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 
 # 4️⃣ 一键安装所有
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
+mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 ```
 
 命令需要在**小程序项目根目录**下执行（含 `project.config.json`）。安装后自动：
@@ -46,24 +123,17 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 - 更新 `project.config.json` 的 `packOptions.include`
 - 写入 `skills-lock.json` 版本锁
 
-### 环境搭建
+### 2.4 Skill 初始化
 
-安装 Skill 后，若有云开发依赖，运行一站式环境搭建：
+安装 Skill 后，若 Skill 中带有 `setup` 脚本（如运行一些前置校验、资源创建），可运行以下命令：
 
 ```bash
-npx mp-skills setup
+mp-skills setup
 ```
-
-`setup` 会聚合云函数、创建数据库集合、检查所需服务，让项目快速就绪。
 
 ---
 
-
-
-
-
-
-## 命令
+## 3. 命令
 
 | 命令         | 描述                                                       | 层级 |
 | ------------ | ---------------------------------------------------------- | ---- |
@@ -77,30 +147,30 @@ npx mp-skills setup
 | `validate`   | 对项目中 Skills 进行静态校验                               | ② |
 | `execute`    | 执行 Skill 的原子接口                                     | ② |
 | `render`     | 渲染 Skill 的原子组件                                     | ② |
-| `setup`      | 一站式环境搭建：聚合云函数、创建集合、检查服务             | ② |
+| `setup`      | 运行 Skill 的初始化脚本                                   | ② |
 | `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） | ② |
 
 ---
 
-### add
+### 3.1 add
 
 从注册表、GitHub 仓库、URL 或本地路径安装 Skill 到当前项目。
 
 ```bash
 # 从注册表（交互式选择 Skill）
-npx mp-skills add awesome-miniprogram
+mp-skills add TencentCloudBase/awesome-miniprogram-skills
 
 # GitHub shorthand（指定单个 Skill）
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 
 # 安装全部
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
+mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 
 # 本地路径
-npx mp-skills add ./my-local-skill
+mp-skills add ./my-local-skill
 
 # 跳过确认
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name> -y
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name> -y
 ```
 
 | 选项                   | 说明                                                       |
@@ -111,40 +181,40 @@ npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name> -y
 
 ---
 
-### find
+### 3.2 find
 
 跨注册仓库搜索可用的 Skill。不需要提前知道 Skill 来自哪个仓库，`find` 会自动查询所有注册源。
 
 ```bash
 # 列出所有远程可用 Skill
-npx mp-skills find
+mp-skills find
 
 # 按关键词搜索（中英文均可）
-npx mp-skills find 咖啡
-npx mp-skills find payment
-npx mp-skills find 挂号
+mp-skills find 咖啡
+mp-skills find payment
+mp-skills find 挂号
 
 # 搜索到后可以直接用 add 安装
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 ```
 
 发现 Skill → 安装 Skill → 环境搭建，三步搞定。
 
 ---
 
-### list
+### 3.3 list
 
 列出当前项目已安装的 Skill。
 
 ```bash
 # 列出已安装
-npx mp-skills list
+mp-skills list
 
 # 列出远程可用的
-npx mp-skills list --remote
+mp-skills list --remote
 
 # 同时列出已安装和远程
-npx mp-skills list --all
+mp-skills list --all
 ```
 
 | 选项            | 说明                         |
@@ -154,14 +224,14 @@ npx mp-skills list --all
 
 ---
 
-### remove
+### 3.4 remove
 
 移除已安装的 Skill。
 
 ```bash
-npx mp-skills remove <name>
-npx mp-skills remove --all
-npx mp-skills remove <name> -y
+mp-skills remove <name>
+mp-skills remove --all
+mp-skills remove <name> -y
 ```
 
 | 选项        | 说明               |
@@ -171,54 +241,54 @@ npx mp-skills remove <name> -y
 
 ---
 
-### update
+### 3.5 update
 
 检查已安装 Skill 是否有更新。
 
 ```bash
 # 检查所有
-npx mp-skills update
+mp-skills update
 
 # 检查指定
-npx mp-skills update <name1> <name2>
+mp-skills update <name1> <name2>
 ```
 
 ---
 
-### new
+### 3.6 new
 
 创建一个新的小程序项目，含 AI Skill 支持的基础配置。
 
 ```bash
-npx mp-skills new my-app
+mp-skills new my-app
 cd my-app
-npx mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
+mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <name>
 ```
 
 ---
 
-### create
+### 3.7 create
 
 在当前小程序项目中创建一个新的 Skill。**默认走本地模板复制**；`--mode agent` 时调用 [opencode](https://github.com/sst/opencode) 让大模型分析项目并生成符合规范的 Skill 分包。
 
 ```bash
 # 模板模式：拷贝模板到 <miniprogramRoot>/skills/<name>/
 cd ./my-miniprogram
-npx mp-skills create my-skill
+mp-skills create my-skill
 
 # 指定项目目录
-npx mp-skills create my-skill -p ./my-miniprogram
+mp-skills create my-skill -p ./my-miniprogram
 
 # agent 模式：进入 opencode 多轮会话，生成并自校验
-npx mp-skills create my-skill --mode agent \
+mp-skills create my-skill --mode agent \
   -s "咖啡点单、订单管理"
 
 # agent 模式 + 在已有 Skill 上迭代（同名再跑一次即可，agent 会做增量修改）
-npx mp-skills create my-skill --mode agent \
+mp-skills create my-skill --mode agent \
   -q "createOrder 接口缺少 amount 字段"
 
 # agent 模式 + 不指定 name：扫描整个项目，agent 自决要生成哪些 Skill
-npx mp-skills create --mode agent
+mp-skills create --mode agent
 ```
 
 | 选项                    | 说明                                                                 |
@@ -236,28 +306,28 @@ npx mp-skills create --mode agent
 
 ---
 
-### setup
+### 3.8 setup
 
 一站式环境搭建：聚合云函数、创建数据库集合、检查服务配置。
 
 ```bash
 # 完整流程（云函数 + 数据库 + 服务检查）
-npx mp-skills setup
+mp-skills setup
 
 # 仅处理云函数
-npx mp-skills setup --cloud-functions
+mp-skills setup --cloud-functions
 
 # 仅处理数据库
-npx mp-skills setup --database
+mp-skills setup --database
 
 # 仅检查服务
-npx mp-skills setup --services
+mp-skills setup --services
 
 # 预览模式，不实际执行
-npx mp-skills setup --dry-run
+mp-skills setup --dry-run
 
 # 指定云开发环境
-npx mp-skills setup --env-id your-env-id
+mp-skills setup --env-id your-env-id
 ```
 
 | 选项                       | 说明                                                   |
@@ -272,28 +342,28 @@ npx mp-skills setup --env-id your-env-id
 
 ---
 
-### validate
+### 3.9 validate
 
 对项目中 Skills 进行静态校验。
 
 ```bash
 # 校验当前项目
-npx mp-skills validate
+mp-skills validate
 
 # 校验指定项目
-npx mp-skills validate ./path/to/project
+mp-skills validate ./path/to/project
 ```
 
 ---
 
-### execute
+### 3.10 execute
 
 执行 Skill 的原子接口。
 
 ```bash
-npx mp-skills execute --name getDrinkList
-npx mp-skills execute --name createOrder --args '{"drinkId":"123"}'
-npx mp-skills execute --name getDrinkList --project ./path/to/project
+mp-skills execute --name getDrinkList
+mp-skills execute --name createOrder --args '{"drinkId":"123"}'
+mp-skills execute --name getDrinkList --project ./path/to/project
 ```
 
 | 选项                      | 说明                     |
@@ -304,13 +374,13 @@ npx mp-skills execute --name getDrinkList --project ./path/to/project
 
 ---
 
-### render
+### 3.11 render
 
 渲染 Skill 的原子组件。
 
 ```bash
-npx mp-skills render --name drinkList
-npx mp-skills render --name drinkList --project ./path/to/project
+mp-skills render --name drinkList
+mp-skills render --name drinkList --project ./path/to/project
 ```
 
 | 选项                      | 说明                     |
@@ -320,7 +390,7 @@ npx mp-skills render --name drinkList --project ./path/to/project
 
 ---
 
-### eval
+### 3.12 eval
 
 对**已安装 Skill 的**小程序项目启动端到端质量评估。需先安装 [wxa-skills-eval](https://github.com/wechat-miniprogram/ai-mode-skills)，并依赖微信开发者工具。
 
@@ -331,13 +401,13 @@ export WXA_SKILL_EVAL_LLM_API_KEY=sk-xxxx
 export WXA_SKILL_EVAL_LLM_MODEL=deepseek-chat
 
 # 默认 official 模式
-npx mp-skills eval -c 3
+mp-skills eval -c 3
 
 # 使用 provider 预设
-npx mp-skills eval --provider deepseek -m deepseek-v4-flash -c 3
+mp-skills eval --provider deepseek -m deepseek-v4-flash -c 3
 
 # 指定项目目录
-npx mp-skills eval -p ./my-miniprogram -c 3
+mp-skills eval -p ./my-miniprogram -c 3
 ```
 
 | 选项                         | 说明                                                                                 |
@@ -360,14 +430,14 @@ npx mp-skills eval -p ./my-miniprogram -c 3
 
 ```bash
 # agent 模式
-npx mp-skills eval --mode agent -c 3
+mp-skills eval --mode agent -c 3
 ```
 
 > 两种模式都依赖微信开发者工具（官方 CLI 的硬性要求）。
 
 ---
 
-## LLM 凭证（BYOK）
+## 4. LLM 凭证（BYOK）
 
 `create --mode agent` 与 `eval` 共用**同一套** OpenAI 兼容凭证，通过环境变量配置：
 
@@ -379,7 +449,7 @@ export WXA_SKILL_EVAL_LLM_MODEL=<model-name>
 
 运行前还会自动加载当前目录的 `.env`（不覆盖已显式 `export` 的变量）。
 
-### 交互式向导
+### 4.1 交互式向导
 
 若运行 `create --mode agent` / `eval` 时**未配置任何凭证**且处于交互式终端（TTY），会弹出交互式向导让你选择提供方：
 
@@ -393,7 +463,7 @@ export WXA_SKILL_EVAL_LLM_MODEL=<model-name>
     自定义（手填 endpoint / key / model）
 ```
 
-#### 提供方详解
+#### 4.1.1 提供方详解
 
 **1. CloudBase（云开发 AI 网关）**
 
@@ -439,7 +509,7 @@ export WXA_SKILL_EVAL_LLM_MODEL=<model-name>
 - **API Key**（必填）
 - **模型名**（必填）
 
-### 凭证持久化
+### 4.2 凭证持久化
 
 选完的凭证会写入当前目录的 `.env` 文件，下次运行时自动加载，不再弹出向导。
 
@@ -455,11 +525,11 @@ WXA_SKILL_EVAL_LLM_MODEL=deepseek-v4-flash
 > echo ".env" >> .gitignore
 > ```
 
-### 非交互式环境（CI）
+### 4.3 非交互式环境（CI）
 
 在非交互式环境（如 CI/CD）下不会弹出向导，缺凭证时会打印所需环境变量并退出。需在运行前通过环境变量或 `.env` 文件配置好凭证。
 
-### URL 规范化
+### 4.4 URL 规范化
 
 `WXA_SKILL_EVAL_LLM_BASE_URL` 会自动规范化处理：
 
@@ -475,7 +545,7 @@ WXA_SKILL_EVAL_LLM_MODEL=deepseek-v4-flash
 
 ---
 
-## add 做了什么
+## 5. add 做了什么
 
 ```
 项目目录/
@@ -493,30 +563,7 @@ WXA_SKILL_EVAL_LLM_MODEL=deepseek-v4-flash
 
 ---
 
-## 安装
-
-```bash
-npm install -g mp-skills
-# 或直接用 npx
-npx mp-skills --help
-```
-
----
-
-## 从源码使用
-
-```bash
-git clone https://github.com/TencentCloudBase/mp-skills.git
-cd mp-skills
-npm install
-npm run build
-npm link
-mp-skills --help
-```
-
----
-
-## 技术栈
+## 7. 技术栈
 
 - TypeScript + ESM
 - [commander.js](https://github.com/tj/commander.js) — CLI 框架
@@ -527,7 +574,7 @@ mp-skills --help
 
 ---
 
-## 相关链接
+## 8. 相关链接
 
 - [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) — 完整 Skill 仓库
 - [wechat-miniprogram/ai-mode-skills](https://github.com/wechat-miniprogram/ai-mode-skills) — 微信官方 Skill 示例
@@ -535,40 +582,14 @@ mp-skills --help
 
 ---
 
-## 理解 mp-skills 的三层结构
-
-这个仓库包含**三种不同类型**的东西，容易混淆，先理清楚：
-
-### ③ 业务 Skill — 小程序里的 AI 能力
-
-安装到小程序项目中，为用户提供具体的 AI 功能。
-
-> 例子：queue-skill（排队取号）、order-skill（点餐）、payment-skill（支付）
->
-> 安装方式：`npx mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill queue-skill`
-
-业务 Skill 存放在单独的 [awesome-miniprogram-skills](https://github.com/TencentCloudBase/awesome-miniprogram-skills) 仓库，本仓库不包含。
-
-### ② CLI 工具 — 你直接用的命令行
-
-管理业务 Skill 的安装、校验、评测和环境搭建。
-
-> 例子：
-> ```
-> npx mp-skills find            # 搜索业务 Skill
-> npx mp-skills add ...         # 安装
-> npx mp-skills setup           # 初始化云开发环境
-> npx mp-skills validate        # 校验业务 Skill 质量
-> ```
-
-### ① 工具 Skill — 给 AI 读的引导文档
+## 9. `mp-skills` 的 Skill
 
 本仓库 `skills/` 下的三个 SKILL.md 文件，**不安装到小程序中**。AI coding 工具读取后按步骤执行，帮你完成开发任务。
 
 > 例子：
-> - `wxa-find-skills` → AI 读完后知道怎么搜索安装业务 Skill
-> - `wxa-create-ai-miniprogram` → AI 读完后知道怎么从零创建项目
-> - `wxa-create-mp-skill` → AI 读完后知道怎么生成自定义 Skill 代码
+> - `wxa-find-skills` → AI 读完后知道怎么通过 mp-skills 搜索安装业务 Skill
+> - `wxa-create-ai-miniprogram` → AI 读完后知道怎么通过 mp-skills 从零创建项目
+> - `wxa-create-mp-skill` → AI 读完后知道怎么通过 mp-skills 生成自定义 Skill 代码
 
 安装方式（通过 skills.sh 安装给 AI coding 工具使用）：
 
