@@ -112,7 +112,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
       console.log('')
       console.log(`  ── ${t.skill} ──`)
     }
-    const result = await executeScript(t)
+    const result = await executeScript(t, projectPath)
     results.push(result)
     if (!opts.json) {
       if (result.status === 'done') {
@@ -215,7 +215,7 @@ function collectSetupTasks(projectPath: string): SetupTask[] {
 
 // ── 执行 ──
 
-function executeScript(task: SetupTask): Promise<SetupRecord> {
+function executeScript(task: SetupTask, projectPath: string): Promise<SetupRecord> {
   return new Promise((resolveRecord) => {
     const startTime = new Date().toISOString()
 
@@ -226,7 +226,7 @@ function executeScript(task: SetupTask): Promise<SetupRecord> {
       timeout: 300_000,
       env: {
         ...process.env,
-        PROJECT_DIR: resolve(task.cwd, '..', '..', '..'),
+        PROJECT_DIR: projectPath,
         SKILL_DIR: task.cwd,
       },
     })

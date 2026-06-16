@@ -28,16 +28,19 @@ export async function pluginCommand(cwd: string, opts: PluginOptions): Promise<v
     process.exit(1)
   }
 
+  // 优先使用 PROJECT_DIR 环境变量（由 mp-skills setup 编排器注入）
+  const projectDir = process.env.PROJECT_DIR ? resolve(process.env.PROJECT_DIR) : resolve(cwd)
+
   const sub = opts.args[0]
   switch (sub) {
     case 'setup':
-      await cloudbaseSetup(resolve(cwd), opts.args.slice(1))
+      await cloudbaseSetup(projectDir, opts.args.slice(1))
       break
     case 'doctor':
-      await cloudbaseDoctor(resolve(cwd))
+      await cloudbaseDoctor(projectDir)
       break
     case 'list':
-      await cloudbaseList(resolve(cwd))
+      await cloudbaseList(projectDir)
       break
     default:
       console.log(`  [ERR] 未知子命令 "${sub}"`)
