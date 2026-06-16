@@ -1,6 +1,6 @@
 {
   "name": "mp-skills",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI for adding AI Skills to WeChat Mini Programs via wx.modelContext",
   "type": "module",
   "bin": {
