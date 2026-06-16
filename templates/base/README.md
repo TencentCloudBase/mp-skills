@@ -26,7 +26,7 @@
    mp-skills add TencentCloudBase/awesome-miniprogram-skills --skill <name>
    ```
 
-5. **运行 setup**：
+5. **运行 setup**（执行 Skill 的初始化脚本）：
 
    ```bash
    mp-skills setup
@@ -77,6 +77,6 @@ project-root/
 | `mp-skills add <repo> --skill <name>` | 安装指定 Skill |
 | `mp-skills remove <name>` | 移除指定 Skill |
 | `mp-skills list` | 列出已安装的 Skill |
-| `mp-skills setup` | 初始化项目配置 |
+| `mp-skills setup` | 执行各 Skill 的初始化脚本 |
 | `mp-skills create <name>` | 创建新的 Skill 模板 |
 | `mp-skills new <name>` | 创建新的 AI 小程序项目 |

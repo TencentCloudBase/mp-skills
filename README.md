@@ -26,7 +26,7 @@
 - 🔍 **Skill 静态校验**：对项目中 Skills 进行规范性检查，支持原子接口执行和组件渲染（`validate` / `execute` / `render`）
 - 🧪 **端到端质量评估**：集成官方评测工具（`wxa-skills-eval`），支持 official 和 agent 两种评估模式，自动生成测试用例并执行（`eval`）
 - 🔑 **多 LLM 提供方**：内置 DeepSeek、智谱 GLM、Kimi、MiniMax、CloudBase 网关等提供方预设，支持 BYOK（Bring Your Own Key）
-- 📋 **版本锁定与部署追踪**：`skills-lock.json` 追踪 Skill 版本 hash 和部署状态（云函数、数据库、服务）
+- 📋 **版本锁定与部署追踪**：`skills-lock.json` 追踪 Skill 版本 hash 和部署状态
 
 ---
 
@@ -75,7 +75,7 @@ cd my-app
 mp-skills find
 mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <skill-name>
 
-# 一键搭建云开发环境
+# 执行 Skill 初始化脚本
 mp-skills setup
 ```
 
@@ -94,7 +94,7 @@ mp-skills add TencentCloudBase/awesome-miniprogram-skills -s <skill-name>
 # 或基于模板创建自定义 Skill
 mp-skills create my-skill
 
-# 搭建云开发环境（如有云开发依赖）
+# 执行 Skill 初始化脚本（如聚合云函数、创建数据库等）
 mp-skills setup
 ```
 
@@ -125,11 +125,13 @@ mp-skills add TencentCloudBase/awesome-miniprogram-skills --all
 
 ### 2.4 Skill 初始化
 
-安装 Skill 后，若 Skill 中带有 `setup` 脚本（如运行一些前置校验、资源创建），可运行以下命令：
+安装 Skill 后，运行 `setup` 自动执行各 Skill 声明的初始化脚本（如聚合云函数、创建数据库集合、配置服务等）：
 
 ```bash
 mp-skills setup
 ```
+
+`setup` 会扫描所有 Skill 的 `mp-skills.json`，展示待执行脚本清单，确认后串行执行。
 
 ---
 
@@ -147,7 +149,7 @@ mp-skills setup
 | `validate`   | 对项目中 Skills 进行静态校验                               | ② |
 | `execute`    | 执行 Skill 的原子接口                                     | ② |
 | `render`     | 渲染 Skill 的原子组件                                     | ② |
-| `setup`      | 运行 Skill 的初始化脚本                                   | ② |
+| `setup`      | 执行各 Skill 声明的初始化脚本                         | ② |
 | `eval`       | 对已有 Skills 项目启动端到端质量评估（需 wxa-skills-eval） | ② |
 
 ---
@@ -308,37 +310,37 @@ mp-skills create --mode agent
 
 ### 3.8 setup
 
-一站式环境搭建：聚合云函数、创建数据库集合、检查服务配置。
+执行各 Skill 声明的初始化脚本。`setup` 会扫描所有 `skills/*/mp-skills.json` 中的 `scripts.setup`，展示确认后串行执行。
 
 ```bash
-# 完整流程（云函数 + 数据库 + 服务检查）
+# 执行所有 Skill 的 setup 脚本
 mp-skills setup
 
-# 仅处理云函数
-mp-skills setup --cloud-functions
-
-# 仅处理数据库
-mp-skills setup --database
-
-# 仅检查服务
-mp-skills setup --services
-
-# 预览模式，不实际执行
+# 预览模式，只展示不执行
 mp-skills setup --dry-run
 
-# 指定云开发环境
-mp-skills setup --env-id your-env-id
+# JSON 格式输出（适合 CI/AI 消费）
+mp-skills setup --json
+mp-skills setup --dry-run --json
 ```
 
-| 选项                       | 说明                                                   |
-| -------------------------- | ------------------------------------------------------ |
-| `-f, --cloud-functions`    | 仅处理云函数                                           |
-| `-d, --database`           | 仅处理数据库                                           |
-| `-s, --services`           | 仅检查服务                                             |
-| `--dry-run`                | 预览模式，不实际执行                                   |
-| `--env-id <id>`            | 云开发环境 ID（未指定则从项目配置读取）                 |
+| 选项            | 说明                                                   |
+| --------------- | ------------------------------------------------------ |
+| `--dry-run`     | 预览模式，只展示待执行脚本，不实际运行                 |
+| `--json`        | JSON 格式输出                                           |
 
-安装 Skill 后运行 `setup` 可自动完成所有云开发基础设施的部署。
+Skill 通过 `mp-skills.json` 声明自己的 setup 脚本：
+
+```json
+{
+  "scripts": {
+    "setup": "mp-skills plugin --name cloudbase setup"
+  },
+  "description": "配置云开发环境并初始化资源"
+}
+```
+
+`setup` 是通用编排器——CloudBase 用户通过内置 plugin 执行云函数聚合、数据库创建等操作；第三方用户可写任意 shell 命令。
 
 ---
 
