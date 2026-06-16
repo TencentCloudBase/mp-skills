@@ -150,7 +150,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
 
 // ── 扫描 ──
 
-function readMpSkillsJson(filePath: string): MpSkillsJson | null {
+export function readMpSkillsJson(filePath: string): MpSkillsJson | null {
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8'))
   } catch {
@@ -158,7 +158,7 @@ function readMpSkillsJson(filePath: string): MpSkillsJson | null {
   }
 }
 
-function resolveSkillsDir(projectPath: string): string | null {
+export function resolveSkillsDir(projectPath: string): string | null {
   // 尝试小程序 root
   try {
     const projectConfigPath = join(projectPath, 'project.config.json')
@@ -176,7 +176,7 @@ function resolveSkillsDir(projectPath: string): string | null {
   return existsSync(fallback) ? fallback : null
 }
 
-function collectSetupTasks(projectPath: string): SetupTask[] {
+export function collectSetupTasks(projectPath: string): SetupTask[] {
   const tasks: SetupTask[] = []
 
   // 1. 扫描 skills/*/mp-skills.json
@@ -220,7 +220,7 @@ function collectSetupTasks(projectPath: string): SetupTask[] {
 
 // ── 项目根目录检测 ──
 
-function resolveProjectRoot(startPath: string): string {
+export function resolveProjectRoot(startPath: string): string {
   // 如果当前目录已有项目特征文件，直接返回
   if (hasProjectFiles(startPath)) return startPath
 
@@ -306,7 +306,7 @@ interface LockData {
   scriptsSetup?: SetupRecord[]
 }
 
-function readSetupRecords(projectPath: string): SetupRecord[] {
+export function readSetupRecords(projectPath: string): SetupRecord[] {
   const lockPath = join(projectPath, 'skills-lock.json')
   if (!existsSync(lockPath)) return []
   try {
@@ -317,7 +317,7 @@ function readSetupRecords(projectPath: string): SetupRecord[] {
   }
 }
 
-function writeSetupRecords(projectPath: string, records: SetupRecord[]): void {
+export function writeSetupRecords(projectPath: string, records: SetupRecord[]): void {
   const lockPath = join(projectPath, 'skills-lock.json')
   let lock: LockData
   try {
