@@ -20,8 +20,13 @@ interface SetupTask {
 }
 
 export async function setupCommand(projectDir: string, opts: SetupOptions): Promise<void> {
-  const projectPath = resolve(projectDir)
-  const tasks = collectSetupTasks(projectPath)
+  const rawPath = resolve(projectDir)
+  const resolved = resolveProjectRoot(rawPath)
+  const tasks = collectSetupTasks(resolved)
+
+  if (rawPath !== resolved && !opts.json) {
+    console.log(`  [INFO] 从项目根目录运行: ${resolved}`)
+  }
 
   if (tasks.length === 0) {
     if (opts.json) {
@@ -36,7 +41,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
     return
   }
 
-  const prevRecords = readSetupRecords(projectPath)
+  const prevRecords = readSetupRecords(resolved)
 
   // 过滤已成功的脚本
   const pending = tasks.filter(
@@ -112,7 +117,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
       console.log('')
       console.log(`  ── ${t.skill} ──`)
     }
-    const result = await executeScript(t, projectPath)
+    const result = await executeScript(t, resolved)
     results.push(result)
     if (!opts.json) {
       if (result.status === 'done') {
@@ -124,7 +129,7 @@ export async function setupCommand(projectDir: string, opts: SetupOptions): Prom
   }
 
   // 写入锁文件
-  writeSetupRecords(projectPath, results)
+  writeSetupRecords(resolved, results)
 
   if (opts.json) {
     console.log(JSON.stringify({ results }))
@@ -211,6 +216,28 @@ function collectSetupTasks(projectPath: string): SetupTask[] {
   // 按 skill 名排序，保证输出稳定
   tasks.sort((a, b) => a.skill.localeCompare(b.skill))
   return tasks
+}
+
+// ── 项目根目录检测 ──
+
+function resolveProjectRoot(startPath: string): string {
+  // 如果当前目录已有项目特征文件，直接返回
+  if (hasProjectFiles(startPath)) return startPath
+
+  // 向上遍历查找 project.config.json
+  let current = startPath
+  const root = resolve(current, '/')
+  while (current !== root) {
+    current = resolve(current, '..')
+    if (hasProjectFiles(current)) return current
+  }
+
+  // 没找到则返回原始路径
+  return startPath
+}
+
+function hasProjectFiles(dir: string): boolean {
+  return existsSync(join(dir, 'project.config.json')) || existsSync(join(dir, 'skills'))
 }
 
 // ── 执行 ──
