@@ -3,8 +3,8 @@ name: wxa-ai-mode-dev
 description: 微信小程序 AI 开发模式（beta）完整开发指南。当开发者需要将小程序改造为 AI 开发模式、封装 SKILL、编写原子接口/原子组件、编写 SKILL.md 或 mcp.json 时触发。覆盖接入流程、项目结构、Schema 设计、content 文本写法、组件约束、最佳实践、常见反例的全部规范。
 metadata:
   author: TencentCloudBase
-  version: '0.1.0'
 compatibility: [微信小程序基础库 ≥3.16.1, iOS 微信 ≥8.0.74]
+version: '0.1.0'
 ---
 
 # 小程序 AI 开发模式（beta）开发指南
