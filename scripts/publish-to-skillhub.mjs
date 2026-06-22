@@ -61,7 +61,16 @@ function parseFrontmatter(skillMdPath) {
   const frontmatter = frontmatterMatch[1]
   const nameMatch = frontmatter.match(/^name:\s*(.+)$/m)
   const descriptionMatch = frontmatter.match(/^description:\s*(.+)$/m)
-  const versionMatch = frontmatter.match(/^version:\s*'?(.+?)'?\s*$/m)
+
+  // version 可能在顶层或在 metadata 块内
+  let versionMatch = frontmatter.match(/^version:\s*'?(.+?)'?\s*$/m)
+  if (!versionMatch) {
+    // 尝试从 metadata 块中取 version
+    const metaMatch = frontmatter.match(/^metadata:\n([\s\S]*?)(?:\n\w|$)/m)
+    if (metaMatch) {
+      versionMatch = metaMatch[1].match(/version:\s*'?(.+?)'?\s*$/m)
+    }
+  }
 
   return {
     name: nameMatch ? nameMatch[1].trim() : '',
