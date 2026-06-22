@@ -3,7 +3,7 @@ name: wxa-create-mp-skill
 description: 在已有小程序项目中创建新的 AI Skill。当用户想在现有项目中添加自定义 AI 能力（而非安装现成的社区 Skill）时触发。完整流程：理解需求 → 设计接口 → 调用 wxa-skills-generate 生成代码 → wxa-skills-validate 校验通过。
 metadata:
   author: TencentCloudBase
-  version: '0.1.0'
+  version: '0.2.0'
 compatibility: [mp-skills CLI, Node.js 18+, 微信开发者工具]
 ---
 
