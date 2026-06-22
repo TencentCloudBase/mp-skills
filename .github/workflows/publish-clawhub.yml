@@ -68,6 +68,6 @@ jobs:
       - name: Job summary
         run: |
           echo "## ClawHub Publish" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Skills: wxa-find-skills, wxa-create-ai-miniprogram, wxa-create-mp-skill" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Skills: wxa-find-skills, wxa-create-ai-miniprogram, wxa-create-mp-skill, wxa-ai-mode-dev" >> "$GITHUB_STEP_SUMMARY"
           echo "- Bump: $BUMP" >> "$GITHUB_STEP_SUMMARY"
           echo "- Dry run: $DRY_RUN" >> "$GITHUB_STEP_SUMMARY"

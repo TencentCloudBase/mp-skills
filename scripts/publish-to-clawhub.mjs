@@ -84,6 +84,7 @@ const DISPLAY_NAMES = {
   'wxa-find-skills': 'Find MP Skills',
   'wxa-create-ai-miniprogram': 'Create AI Miniprogram',
   'wxa-create-mp-skill': 'Create MP Skill',
+  'wxa-ai-mode-dev': 'AI Mode Dev Guide',
 }
 
 for (const skill of entries) {
