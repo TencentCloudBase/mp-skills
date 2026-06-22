@@ -47,19 +47,12 @@ jobs:
           node-version: '22'
 
       # ── ClawHub 发布 ──
-      - name: ClawHub - Generate publish info
-        id: publish_info
-        run: node scripts/publish-to-clawhub.mjs --skills-dir skills --bump "$BUMP"
-
       - name: ClawHub - Install CLI
         if: ${{ env.DRY_RUN != 'true' }}
         run: npm install -g clawhub@latest
 
-      - name: ClawHub - Login
-        if: ${{ env.DRY_RUN != 'true' }}
-        env:
-          CLAWDHUB_TOKEN: ${{ secrets.CLAWDHUB_TOKEN }}
-        run: clawhub login --token "$CLAWDHUB_TOKEN" --no-browser
+      - name: ClawHub - Dry run
+        run: node scripts/publish-to-clawhub.mjs --skills-dir skills --bump "$BUMP"
 
       - name: ClawHub - Publish each skill
         if: ${{ env.DRY_RUN != 'true' }}
