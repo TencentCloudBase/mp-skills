@@ -135,48 +135,25 @@ const entries = readdirSync(skillsDir, { withFileTypes: true })
   })
   .filter(Boolean)
 
-// 在 SkillHub 上创建 skill（首次发布时）
-async function createSkillOnSkillhub(slug, displayName, description) {
+// 上传 skill 到 SkillHub（创建和更新版本用同一个 API）
+// POST /api/v1/orgs/{orgId}/skills，multipart/form-data
+// payload 中带 slug 表示创建新 skill，不带则更新已有 skill 的版本
+async function publishToSkillhub(skill) {
   const orgId = process.env.SKILLHUB_ORG_ID
   const token = process.env.SKILLHUB_API_TOKEN
+
+  if (!orgId) throw new Error('缺少环境变量 SKILLHUB_ORG_ID')
+  if (!token) throw new Error('缺少环境变量 SKILLHUB_API_TOKEN')
+
   const url = `${apiBase}/api/v1/orgs/${orgId}/skills`
-
-  const body = JSON.stringify({
-    slug,
-    displayName,
-    summary: description,
-  })
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body,
-  })
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`创建 skill 失败 (${response.status}): ${text}`)
-  }
-
-  return response.json()
-}
-
-// 发布版本到 SkillHub
-async function uploadVersionToSkillhub(skill) {
-  const orgId = process.env.SKILLHUB_ORG_ID
-  const token = process.env.SKILLHUB_API_TOKEN
-
-  const url = `${apiBase}/api/v1/orgs/${orgId}/skills/${skill.slug}/versions`
   const formData = new FormData()
 
   const payload = JSON.stringify({
-    version: skill.version,
-    changelog: changelog || '',
+    slug: skill.slug,
     displayName: skill.displayName,
+    version: skill.version,
     summary: skill.description,
+    changelog: changelog || '',
     securityScan: false,
   })
   formData.append('payload', payload)
@@ -215,22 +192,6 @@ async function uploadVersionToSkillhub(skill) {
     return { status: 'published', versionId: responseJson?.versionId }
   } finally {
     clearTimeout(timeoutId)
-  }
-}
-
-// 发布到 SkillHub（自动处理首次创建的 404）
-async function publishToSkillhub(skill) {
-  try {
-    return await uploadVersionToSkillhub(skill)
-  } catch (err) {
-    // 404 skill not found → 先创建再重试
-    if (err.message.includes('(404)')) {
-      console.log(`  [INFO] skill 不存在，正在创建...`)
-      await createSkillOnSkillhub(skill.slug, skill.displayName, skill.description)
-      console.log(`  [INFO] 创建成功，重新发布版本...`)
-      return await uploadVersionToSkillhub(skill)
-    }
-    throw err
   }
 }
 
