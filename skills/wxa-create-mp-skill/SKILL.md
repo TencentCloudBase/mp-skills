@@ -45,8 +45,10 @@ compatibility: [mp-skills CLI, Node.js 18+, 微信开发者工具]
 | `<validate-dir>/references/VALIDATE_RULES.md` | V001~V016 规则详情 | 校验报错需定位 id 时 |
 | `<validate-dir>/references/CLI_AGENT_REFERENCE.md` | execute/render 脚本用法 | Step 4 执行 |
 | `<project>/SKILL-DEV-GUIDE.md` | 项目开发规范和 WeCard 视觉基线 | Step 2 设计时 |
+| `<mode-dev-dir>/SKILL.md` | AI 开发模式开发规范（content 写法、description 模板、禁令集） | Step 2 设计时 |
+| `<mode-dev-dir>/references/BEST_PRACTICES.md` | content 文本写法、三段式 description 模板、常见禁令 | Step 2/3 编写 content/description 时 |
 
-> `<generate-dir>` 和 `<validate-dir>` 在 Step 3 中通过 `npx mp-skills --help` 获取。
+> `<generate-dir>`、`<validate-dir>` 和 `<mode-dev-dir>` 在 Step 3 中通过 `npx mp-skills --help` 获取。
 
 ## 硬性约束
 
