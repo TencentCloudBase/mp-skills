@@ -7,9 +7,12 @@
  *
  * --publish 时通过 SkillHub API 实际发布，否则只打印发布信息。
  * 需要设置环境变量 SKILLHUB_API_TOKEN 和 SKILLHUB_ORG_ID。
+ *
+ * 版本号从每个 SKILL.md 的 frontmatter version 字段读取并 bump。
+ * 首次发布（404）时自动创建 skill。
  */
 
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, resolve, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -25,26 +28,6 @@ if (!existsSync(skillsDir)) {
   console.error(`skills 目录不存在: ${skillsDir}`)
   process.exit(1)
 }
-
-// 获取当前版本号
-let currentVersion = '0.1.0'
-const pkgPath = join(resolve('.'), 'package.json')
-if (existsSync(pkgPath)) {
-  try {
-    currentVersion = JSON.parse(readFileSync(pkgPath, 'utf-8')).version || '0.1.0'
-  } catch {}
-}
-
-// 计算新版本
-const parts = currentVersion.split('.').map(Number)
-if (bump === 'major') {
-  parts[0]++; parts[1] = 0; parts[2] = 0
-} else if (bump === 'minor') {
-  parts[1]++; parts[2] = 0
-} else {
-  parts[2]++
-}
-const newVersion = parts.join('.')
 
 // 获取 changelog
 let changelog = ''
@@ -87,6 +70,21 @@ function parseFrontmatter(skillMdPath) {
   }
 }
 
+// 从版本号做 bump
+function bumpVersion(versionStr, bumpType) {
+  const match = (versionStr || '0.1.0').match(/^(\d+)\.(\d+)\.(\d+)/)
+  if (!match) return '1.0.0'
+  const parts = [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])]
+  if (bumpType === 'major') {
+    parts[0]++; parts[1] = 0; parts[2] = 0
+  } else if (bumpType === 'minor') {
+    parts[1]++; parts[2] = 0
+  } else {
+    parts[2]++
+  }
+  return parts.join('.')
+}
+
 const SLUG_MAP = {
   'wxa-find-skills': 'wxa-find-skills',
   'wxa-create-ai-miniprogram': 'wxa-create-ai-miniprogram',
@@ -114,6 +112,7 @@ const entries = readdirSync(skillsDir, { withFileTypes: true })
 
     const slug = SLUG_MAP[e.name] || e.name
     const displayName = DISPLAY_NAMES[e.name] || e.name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    const skillVersion = bumpVersion(metadata.version, bump)
 
     return {
       name: e.name,
@@ -121,19 +120,45 @@ const entries = readdirSync(skillsDir, { withFileTypes: true })
       displayName,
       path: skillPath,
       description: metadata.description,
-      version: metadata.version || newVersion,
+      version: skillVersion,
       files: collectFiles(skillPath),
     }
   })
   .filter(Boolean)
 
-// 发布到 SkillHub
-async function uploadToSkillhub(skill) {
+// 在 SkillHub 上创建 skill（首次发布时）
+async function createSkillOnSkillhub(slug, displayName, description) {
   const orgId = process.env.SKILLHUB_ORG_ID
   const token = process.env.SKILLHUB_API_TOKEN
+  const url = `${apiBase}/api/v1/orgs/${orgId}/skills`
 
-  if (!orgId) throw new Error('缺少环境变量 SKILLHUB_ORG_ID')
-  if (!token) throw new Error('缺少环境变量 SKILLHUB_API_TOKEN')
+  const body = JSON.stringify({
+    slug,
+    displayName,
+    summary: description,
+  })
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body,
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`创建 skill 失败 (${response.status}): ${text}`)
+  }
+
+  return response.json()
+}
+
+// 发布版本到 SkillHub
+async function uploadVersionToSkillhub(skill) {
+  const orgId = process.env.SKILLHUB_ORG_ID
+  const token = process.env.SKILLHUB_API_TOKEN
 
   const url = `${apiBase}/api/v1/orgs/${orgId}/skills/${skill.slug}/versions`
   const formData = new FormData()
@@ -184,8 +209,23 @@ async function uploadToSkillhub(skill) {
   }
 }
 
+// 发布到 SkillHub（自动处理首次创建的 404）
+async function publishToSkillhub(skill) {
+  try {
+    return await uploadVersionToSkillhub(skill)
+  } catch (err) {
+    // 404 skill not found → 先创建再重试
+    if (err.message.includes('(404)')) {
+      console.log(`  [INFO] skill 不存在，正在创建...`)
+      await createSkillOnSkillhub(skill.slug, skill.displayName, skill.description)
+      console.log(`  [INFO] 创建成功，重新发布版本...`)
+      return await uploadVersionToSkillhub(skill)
+    }
+    throw err
+  }
+}
+
 // 主流程
-console.log(`[SkillHub] 当前版本: ${currentVersion} → ${newVersion} (${bump})`)
 console.log(`[SkillHub] 发现 ${entries.length} 个 Skill`)
 console.log('')
 
@@ -196,7 +236,7 @@ for (const skill of entries) {
   console.log(`--- ${skill.name} ---`)
   console.log(`  slug: ${skill.slug}`)
   console.log(`  name: ${skill.displayName}`)
-  console.log(`  version: ${skill.version}`)
+  console.log(`  version: ${skill.version} (bump: ${bump})`)
   console.log(`  files: ${skill.files.length} 个文件`)
 
   if (!doPublish) {
@@ -207,7 +247,7 @@ for (const skill of entries) {
   }
 
   try {
-    const result = await uploadToSkillhub(skill)
+    const result = await publishToSkillhub(skill)
     if (result.status === 'published') {
       console.log(`  [OK] 发布成功, versionId: ${result.versionId}`)
     } else if (result.status === 'skipped') {
