@@ -46,6 +46,7 @@ const TOOL_SKILLS = [
   { name: 'wxa-skills-generate', verify: 'SKILL.md', desc: 'AI 辅助生成 Skill 代码' },
   { name: 'wxa-skills-validate', verify: 'scripts/validate.mjs', desc: 'Skill 静态校验 + 编译 + 执行 + 渲染' },
   { name: 'wxa-skills-eval', verify: 'cli/index.js', desc: '端到端质量评估' },
+  { name: 'wxa-ai-mode-dev', verify: 'SKILL.md', desc: 'AI 开发模式开发规范与最佳实践' },
 ]
 
 // Logo 在 help 顶部也显示
